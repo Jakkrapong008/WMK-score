@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ข้อมูลสารสนเทศการประเมินผลคุณภาพผู้เรียน - โรงเรียนวัดแม่กะ</title>
+    <!-- Google Fonts: Sarabun -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Plugin for Data Labels -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .bg-school-red { background-color: #D32F2F; }
+        .text-school-red { color: #D32F2F; }
+        .bg-school-yellow { background-color: #FBC02D; }
+        .border-school-yellow { border-color: #FBC02D; }
+        
+        .tab-active {
+            border-bottom: 4px solid #D32F2F;
+            color: #D32F2F;
+            font-weight: bold;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #D32F2F;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header: Yellow background with Black text -->
+    <header class="bg-school-yellow text-black shadow-md">
+        <div class="container mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between">
+            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                <img src="https://img2.pic.in.th/logob0b7643db577ceee.png" alt="Logo" class="h-20 w-auto drop-shadow-md" onerror="this.src='https://via.placeholder.com/80?text=Logo'">
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold">ข้อมูลสารสนเทศการประเมินผลคุณภาพผู้เรียน</h1>
+                    <p class="text-sm md:text-base opacity-80 font-medium">โรงเรียนวัดแม่กะ สำนักงานเขตพื้นที่การศึกษาประถมศึกษาเชียงใหม่ เขต 3</p>
+                </div>
+            </div>
+            <div class="bg-black/5 p-3 rounded-lg backdrop-blur-sm border border-black/10">
+                <span id="currentDate" class="text-sm font-bold"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-center space-x-8">
+                <button onclick="switchTab('RT')" id="tab-RT" class="px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 tab-active">RT</button>
+                <button onclick="switchTab('NT')" id="tab-NT" class="px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300">NT</button>
+                <button onclick="switchTab('ONET')" id="tab-ONET" class="px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300">O-NET</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- Control Panel -->
+        <div class="card p-6 mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end border-t-4 border-school-red">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">เลือกวิชา</label>
+                <select id="subjectSelect" onchange="handleSubjectChange()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">เลือกสาระ</label>
+                <select id="strandSelect" onchange="filterData()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                </select>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="loadInitialData()" class="bg-school-red hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    รีเฟรชข้อมูล
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="flex flex-col items-center justify-center py-20 hidden">
+            <div class="loader mb-4"></div>
+            <p class="text-gray-500 animate-pulse">กำลังโหลดข้อมูลสารสนเทศ...</p>
+        </div>
+
+        <!-- Chart Section -->
+        <div id="chartContainer" class="card p-6 min-h-[500px]">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                    <span id="chartTitle" class="bg-school-red/10 text-school-red px-3 py-1 rounded-full text-sm mr-3 font-bold">RT</span>
+                    กราฟแสดงแนวโน้มคะแนนเฉลี่ย
+                </h2>
+                <div class="flex space-x-6 mt-2 md:mt-0">
+                    <div class="flex items-center">
+                        <span class="w-4 h-1 bg-red-600 mr-2"></span>
+                        <span class="text-xs font-bold text-gray-600">โรงเรียน</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-4 h-1 border-b-2 border-dashed border-yellow-500 mr-2"></span>
+                        <span class="text-xs font-bold text-gray-600">ประเทศ</span>
+                    </div>
+                </div>
+            </div>
+            <div class="relative h-[450px]">
+                <canvas id="scoreChart"></canvas>
+            </div>
+            <div id="emptyState" class="hidden absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
+                <p class="text-gray-400 italic">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-8 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="mb-2">© 2024 โรงเรียนวัดแม่กะ - ระบบรายงานผลการประเมินคุณภาพผู้เรียน</p>
+            <p class="text-xs opacity-50 uppercase tracking-widest">Educational Quality Assessment Information System</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxVmnZOnifSj3rYsNmci1aDUlh-VBkKQBRhVvkjJUK7m3UpB2boBrddoOPI9mK7btInsw/exec';
+        let currentTab = 'RT';
+        let fullData = [];
+        let myChart = null;
+
+        // Register DataLabels plugin
+        Chart.register(ChartDataLabels);
+
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('th-TH', {
+            year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+        });
+
+        window.onload = function() {
+            loadInitialData();
+        };
+
+        async function loadInitialData() {
+            const loading = document.getElementById('loading');
+            const chartBox = document.getElementById('chartContainer');
+            
+            loading.classList.remove('hidden');
+            chartBox.classList.add('opacity-30');
+
+            try {
+                const response = await fetch(`${API_URL}?sheet=${currentTab}`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    fullData = result.data;
+                    populateSubjectFilter();
+                    updateStrandFilter(); 
+                    filterData();
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            } finally {
+                loading.classList.add('hidden');
+                chartBox.classList.remove('opacity-30');
+            }
+        }
+
+        function populateSubjectFilter() {
+            const subjects = [...new Set(fullData.map(item => item.วิชา))].sort();
+            const subjectSelect = document.getElementById('subjectSelect');
+            subjectSelect.innerHTML = ''; 
+            subjects.forEach(sub => {
+                subjectSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
+            });
+            if (subjects.length > 0) subjectSelect.selectedIndex = 0;
+        }
+
+        function handleSubjectChange() {
+            updateStrandFilter();
+            filterData();
+        }
+
+        function updateStrandFilter() {
+            const selectedSub = document.getElementById('subjectSelect').value;
+            const strandSelect = document.getElementById('strandSelect');
+            let relevantStrands = [];
+            if (selectedSub) {
+                relevantStrands = [...new Set(fullData.filter(item => item.วิชา === selectedSub).map(item => item.สาระ))].sort();
+            }
+            strandSelect.innerHTML = '';
+            relevantStrands.forEach(str => {
+                if(str) strandSelect.innerHTML += `<option value="${str}">${str}</option>`;
+            });
+
+            // ปรับแก้: ค้นหาคำว่า "รวม" ในรายการสาระที่ดึงมาได้
+            const totalIndex = relevantStrands.findIndex(s => s === "รวม");
+            if (totalIndex !== -1) {
+                // ถ้ามีคำว่า "รวม" ให้เลือกค่านั้นเป็นอันดับแรก
+                strandSelect.value = "รวม";
+            } else if (relevantStrands.length > 0) {
+                // ถ้าไม่มีคำว่า "รวม" ให้เลือกรายการแรกตามปกติ
+                strandSelect.selectedIndex = 0;
+            }
+        }
+
+        function switchTab(tab) {
+            if (currentTab === tab) return;
+            currentTab = tab;
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('tab-active'));
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            document.getElementById('chartTitle').innerText = tab === 'ONET' ? 'O-NET' : tab;
+            loadInitialData();
+        }
+
+        function filterData() {
+            const selectedSub = document.getElementById('subjectSelect').value;
+            const selectedStrand = document.getElementById('strandSelect').value;
+
+            let filtered = fullData.filter(item => item.วิชา === selectedSub && item.สาระ === selectedStrand);
+
+            const yearGroups = {};
+            filtered.forEach(item => {
+                if (!yearGroups[item.ปี]) {
+                    yearGroups[item.ปี] = { school: [], country: [] };
+                }
+                yearGroups[item.ปี].school.push(parseFloat(item.คะแนนเฉลี่ยระดับโรงเรียน) || 0);
+                yearGroups[item.ปี].country.push(parseFloat(item.คะแนนเฉลี่ยระดับประเทศ) || 0);
+            });
+
+            const sortedYears = Object.keys(yearGroups).sort();
+            const schoolAverages = sortedYears.map(year => {
+                const vals = yearGroups[year].school;
+                return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+            });
+            const countryAverages = sortedYears.map(year => {
+                const vals = yearGroups[year].country;
+                return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+            });
+
+            renderChart(sortedYears, schoolAverages, countryAverages);
+        }
+
+        function renderChart(labels, schoolData, countryData) {
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+            const emptyState = document.getElementById('emptyState');
+
+            if (labels.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'ระดับโรงเรียน',
+                            data: schoolData,
+                            borderColor: '#D32F2F',
+                            backgroundColor: 'rgba(211, 47, 47, 0.05)',
+                            borderWidth: 4,
+                            pointBackgroundColor: '#D32F2F',
+                            pointRadius: 6,
+                            pointHoverRadius: 9,
+                            tension: 0.1,
+                            fill: true,
+                            datalabels: {
+                                align: 'top',
+                                offset: 8,
+                                color: '#D32F2F',
+                                font: { weight: 'bold', size: 12, family: 'Sarabun' }
+                            }
+                        },
+                        {
+                            label: 'ระดับประเทศ',
+                            data: countryData,
+                            borderColor: '#FBC02D',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            pointBackgroundColor: '#FBC02D',
+                            pointRadius: 6,
+                            tension: 0.1,
+                            datalabels: {
+                                align: 'bottom',
+                                offset: 8,
+                                color: '#A16207',
+                                font: { weight: 'bold', size: 12, family: 'Sarabun' }
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 30,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12,
+                            titleFont: { family: 'Sarabun', size: 14 },
+                            bodyFont: { family: 'Sarabun', size: 13 },
+                            callbacks: {
+                                label: context => ` ${context.dataset.label}: ${context.raw} %`
+                            }
+                        },
+                        datalabels: {
+                            formatter: value => value + '%',
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grace: '15%', 
+                            ticks: {
+                                font: { family: 'Sarabun' },
+                                callback: value => value + '%'
+                            },
+                            grid: { color: '#f0f0f0' }
+                        },
+                        x: {
+                            ticks: { font: { family: 'Sarabun', weight: 'bold' } },
+                            grid: { display: false }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
