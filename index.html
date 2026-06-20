@@ -67,32 +67,67 @@
     <!-- Navigation Tabs -->
     <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
         <div class="container mx-auto px-4">
-            <div class="flex justify-center space-x-8">
-                <button onclick="switchTab('RT')" id="tab-RT" class="px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 tab-active">RT</button>
-                <button onclick="switchTab('NT')" id="tab-NT" class="px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300">NT</button>
-                <button onclick="switchTab('ONET')" id="tab-ONET" class="px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300">O-NET</button>
+            <div class="flex justify-center space-x-4 md:space-x-8 overflow-x-auto">
+                <button onclick="switchTab('RT')" id="tab-RT" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 tab-active whitespace-nowrap">RT</button>
+                <button onclick="switchTab('NT')" id="tab-NT" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap">NT</button>
+                <button onclick="switchTab('ONET')" id="tab-ONET" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap">O-NET</button>
+                <!-- เพิ่มแท็บ กราฟรวม -->
+                <button onclick="switchTab('OVERALL')" id="tab-OVERALL" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap">กราฟรวม</button>
             </div>
         </div>
     </nav>
 
     <main class="container mx-auto px-4 py-8">
         <!-- Control Panel -->
-        <div class="card p-6 mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end border-t-4 border-school-red">
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">เลือกวิชา</label>
-                <select id="subjectSelect" onchange="handleSubjectChange()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
-                </select>
+        <div class="card p-6 mb-8 border-t-4 border-school-red">
+            <!-- Normal Controls (สำหรับ RT, NT, ONET) -->
+            <div id="normalControls" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">เลือกวิชา</label>
+                    <select id="subjectSelect" onchange="handleSubjectChange()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">เลือกสาระ</label>
+                    <select id="strandSelect" onchange="filterData()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                    </select>
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="loadInitialData()" class="bg-school-red hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        รีเฟรชข้อมูล
+                    </button>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">เลือกสาระ</label>
-                <select id="strandSelect" onchange="filterData()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
-                </select>
-            </div>
-            <div class="flex justify-end">
-                <button onclick="loadInitialData()" class="bg-school-red hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    รีเฟรชข้อมูล
-                </button>
+
+            <!-- Overall Controls (สำหรับ กราฟรวม) - ซ่อนโดยเริ่มต้น -->
+            <div id="overallControls" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end hidden">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">การสอบ</label>
+                    <select id="examSelect" onchange="handleOverallFilterChange('exam')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                        <option value="RT">RT</option>
+                        <option value="NT">NT</option>
+                        <option value="ONET">O-NET</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ปีการศึกษา</label>
+                    <select id="yearSelect" onchange="handleOverallFilterChange('year')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ประเภทกราฟ</label>
+                    <select id="chartTypeSelect" onchange="handleOverallFilterChange('type')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                        <option value="type1">แบบที่ 1: เปรียบเทียบ รร. กับ ปท.</option>
+                        <option value="type2">แบบที่ 2: เปรียบเทียบย้อนหลัง 3 ปี</option>
+                    </select>
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="loadOverallData()" class="bg-school-red hover:bg-red-700 text-white w-full md:w-auto px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center justify-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        รีเฟรชข้อมูลรวม
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -107,9 +142,10 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4">
                 <h2 class="text-xl font-bold text-gray-800 flex items-center">
                     <span id="chartTitle" class="bg-school-red/10 text-school-red px-3 py-1 rounded-full text-sm mr-3 font-bold">RT</span>
-                    กราฟแสดงแนวโน้มคะแนนเฉลี่ย
+                    <span id="chartSubtitle">กราฟแสดงแนวโน้มคะแนนเฉลี่ย</span>
                 </h2>
-                <div class="flex space-x-6 mt-2 md:mt-0">
+                <!-- Normal Legend (สำหรับกราฟเส้น) -->
+                <div id="normalLegend" class="flex space-x-6 mt-2 md:mt-0">
                     <div class="flex items-center">
                         <span class="w-4 h-1 bg-red-600 mr-2"></span>
                         <span class="text-xs font-bold text-gray-600">โรงเรียน</span>
@@ -140,6 +176,7 @@
         const API_URL = 'https://script.google.com/macros/s/AKfycbxVmnZOnifSj3rYsNmci1aDUlh-VBkKQBRhVvkjJUK7m3UpB2boBrddoOPI9mK7btInsw/exec';
         let currentTab = 'RT';
         let fullData = [];
+        let fullOverallData = [];
         let myChart = null;
 
         // Register DataLabels plugin
@@ -153,7 +190,43 @@
             loadInitialData();
         };
 
+        // ฟังก์ชันสลับแท็บ
+        function switchTab(tab) {
+            if (currentTab === tab) return;
+            currentTab = tab;
+            
+            // อัปเดตสถานะปุ่มแท็บ
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('tab-active'));
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+
+            const normalControls = document.getElementById('normalControls');
+            const overallControls = document.getElementById('overallControls');
+            const normalLegend = document.getElementById('normalLegend');
+            const chartTitle = document.getElementById('chartTitle');
+            const chartSubtitle = document.getElementById('chartSubtitle');
+
+            // แสดง/ซ่อน ส่วนควบคุมและ Legend ตามแท็บที่เลือก
+            if (tab === 'OVERALL') {
+                normalControls.classList.add('hidden');
+                overallControls.classList.remove('hidden');
+                normalLegend.classList.add('hidden');
+                chartTitle.innerText = 'กราฟรวม';
+                chartSubtitle.innerText = 'เปรียบเทียบผลการประเมิน';
+                loadOverallData();
+            } else {
+                normalControls.classList.remove('hidden');
+                overallControls.classList.add('hidden');
+                normalLegend.classList.remove('hidden');
+                chartTitle.innerText = tab === 'ONET' ? 'O-NET' : tab;
+                chartSubtitle.innerText = 'กราฟแสดงแนวโน้มคะแนนเฉลี่ย';
+                loadInitialData();
+            }
+        }
+
+        // โหลดข้อมูลสำหรับแท็บปกติ (RT, NT, ONET)
         async function loadInitialData() {
+            if (currentTab === 'OVERALL') return; // ป้องกันการโหลดผิดฟังก์ชัน
+
             const loading = document.getElementById('loading');
             const chartBox = document.getElementById('chartContainer');
             
@@ -172,12 +245,41 @@
                 }
             } catch (error) {
                 console.error('Error fetching data:', error);
+                alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
             } finally {
                 loading.classList.add('hidden');
                 chartBox.classList.remove('opacity-30');
             }
         }
 
+        // โหลดข้อมูลสำหรับแท็บกราฟรวม
+        async function loadOverallData() {
+            const loading = document.getElementById('loading');
+            const chartBox = document.getElementById('chartContainer');
+            
+            loading.classList.remove('hidden');
+            chartBox.classList.add('opacity-30');
+
+            try {
+                // เรียก API ด้วย parameter sheet=OVERALL
+                const response = await fetch(`${API_URL}?sheet=OVERALL`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    fullOverallData = result.data;
+                    populateYearFilter();
+                    handleOverallFilterChange();
+                }
+            } catch (error) {
+                console.error('Error fetching overall data:', error);
+                alert('เกิดข้อผิดพลาดในการโหลดข้อมูลรวม');
+            } finally {
+                loading.classList.add('hidden');
+                chartBox.classList.remove('opacity-30');
+            }
+        }
+
+        // --- ฟังก์ชันสำหรับแท็บปกติ ---
         function populateSubjectFilter() {
             const subjects = [...new Set(fullData.map(item => item.วิชา))].sort();
             const subjectSelect = document.getElementById('subjectSelect');
@@ -205,24 +307,12 @@
                 if(str) strandSelect.innerHTML += `<option value="${str}">${str}</option>`;
             });
 
-            // ปรับแก้: ค้นหาคำว่า "รวม" ในรายการสาระที่ดึงมาได้
             const totalIndex = relevantStrands.findIndex(s => s === "รวม");
             if (totalIndex !== -1) {
-                // ถ้ามีคำว่า "รวม" ให้เลือกค่านั้นเป็นอันดับแรก
                 strandSelect.value = "รวม";
             } else if (relevantStrands.length > 0) {
-                // ถ้าไม่มีคำว่า "รวม" ให้เลือกรายการแรกตามปกติ
                 strandSelect.selectedIndex = 0;
             }
-        }
-
-        function switchTab(tab) {
-            if (currentTab === tab) return;
-            currentTab = tab;
-            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('tab-active'));
-            document.getElementById(`tab-${tab}`).classList.add('tab-active');
-            document.getElementById('chartTitle').innerText = tab === 'ONET' ? 'O-NET' : tab;
-            loadInitialData();
         }
 
         function filterData() {
@@ -336,7 +426,7 @@
                     },
                     scales: {
                         y: {
-                            grace: '15%', 
+                            grace: '10%', 
                             ticks: {
                                 font: { family: 'Sarabun' },
                                 callback: value => value + '%'
@@ -353,6 +443,186 @@
                         mode: 'index'
                     }
                 }
+            });
+        }
+
+        // --- ฟังก์ชันสำหรับแท็บกราฟรวม ---
+
+        function populateYearFilter() {
+            const selectedExam = document.getElementById('examSelect').value;
+            // กรองเอาเฉพาะข้อมูลของการสอบที่เลือกมาหาปีการศึกษาที่มี
+            const examData = fullOverallData.filter(item => item.การสอบ === selectedExam);
+            const years = [...new Set(examData.map(item => item.ปี))].sort().reverse();
+            
+            const yearSelect = document.getElementById('yearSelect');
+            const currentSelectedYear = yearSelect.value;
+            
+            yearSelect.innerHTML = '';
+            years.forEach(year => {
+                yearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+            });
+            
+            // พยายามรักษาการเลือกปีเดิมไว้ ถ้ามีการเปลี่ยนประเภทการสอบ
+            if (years.includes(currentSelectedYear)) {
+                yearSelect.value = currentSelectedYear;
+            } else if (years.length > 0) {
+                yearSelect.selectedIndex = 0;
+            }
+        }
+
+        function handleOverallFilterChange(source) {
+            if (source === 'exam') {
+                populateYearFilter(); // หากเปลี่ยนการสอบ ให้อัปเดตรายการปีการศึกษาใหม่
+            }
+            filterOverallData();
+        }
+
+        function filterOverallData() {
+            const selectedYear = document.getElementById('yearSelect').value;
+            const selectedExam = document.getElementById('examSelect').value;
+            const chartType = document.getElementById('chartTypeSelect').value;
+            
+            // กรองเอาเฉพาะข้อมูลที่เป็นสาระ "รวม" และตรงกับการสอบที่เลือกใน Dropdown
+            let filtered = fullOverallData.filter(item => item.สาระ === 'รวม' && item.การสอบ === selectedExam);
+
+            renderOverallChart(filtered, selectedYear, chartType);
+        }
+
+        function renderOverallChart(data, selectedYear, chartType) {
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+            const emptyState = document.getElementById('emptyState');
+            let chartData = { labels: [], datasets: [] };
+            let options = {};
+            
+            const examName = document.getElementById('examSelect').value;
+            const titleSpan = `<span class="bg-school-red/10 text-school-red px-3 py-1 rounded-full text-sm mr-3 font-bold">${examName}</span>`;
+
+            if (data.length === 0) {
+                emptyState.classList.remove('hidden');
+                if (myChart) myChart.destroy();
+                document.getElementById('chartTitle').innerHTML = titleSpan + 'ไม่พบข้อมูล';
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            if (myChart) myChart.destroy();
+
+            // การตั้งค่ากราฟตามประเภทที่เลือก
+            switch (chartType) {
+                case 'type1': // แบบที่ 1: เปรียบเทียบ รร. กับ ปท. (ในปีที่เลือก)
+                    const dataYear1 = data.filter(item => item.ปี === selectedYear);
+                    const subjects1 = [...new Set(dataYear1.map(item => item.วิชา))];
+                    
+                    const schoolScores1 = subjects1.map(sub => {
+                        const items = dataYear1.filter(item => item.วิชา === sub);
+                        const avg = items.reduce((sum, item) => sum + (parseFloat(item.คะแนนเฉลี่ยระดับโรงเรียน) || 0), 0) / items.length;
+                        return avg.toFixed(2);
+                    });
+                    const countryScores1 = subjects1.map(sub => {
+                        const items = dataYear1.filter(item => item.วิชา === sub);
+                        const avg = items.reduce((sum, item) => sum + (parseFloat(item.คะแนนเฉลี่ยระดับประเทศ) || 0), 0) / items.length;
+                        return avg.toFixed(2);
+                    });
+
+                    chartData = {
+                        labels: subjects1,
+                        datasets: [
+                            {
+                                label: 'คะแนนเฉลี่ยระดับประเทศ',
+                                data: countryScores1,
+                                backgroundColor: '#E53935', // สีแดง
+                                datalabels: { anchor: 'end', align: 'top' }
+                            },
+                            {
+                                label: 'คะแนนเฉลี่ยระดับโรงเรียน',
+                                data: schoolScores1,
+                                backgroundColor: '#FBC02D', // สีเหลือง
+                                datalabels: { anchor: 'end', align: 'top' }
+                            }
+                        ]
+                    };
+                    document.getElementById('chartTitle').innerHTML = titleSpan + `แผนภูมิที่ 1 เปรียบเทียบคะแนนเฉลี่ยระดับโรงเรียน กับระดับประเทศ ปีการศึกษา ${selectedYear}`;
+                    break;
+
+                case 'type2': // แบบที่ 2: เปรียบเทียบย้อนหลัง 3 ปี (อิงปีที่เลือกเป็นปีล่าสุด)
+                    const targetYearNum = parseInt(selectedYear);
+                    const years2 = [String(targetYearNum - 2), String(targetYearNum - 1), String(targetYearNum)];
+                    
+                    // หาเฉพาะข้อมูลวิชาที่มีปรากฏในช่วง 3 ปีนี้
+                    const dataYears2 = data.filter(item => years2.includes(item.ปี));
+                    let subjects2 = [...new Set(dataYears2.map(item => item.วิชา))];
+                    
+                    if(subjects2.length === 0) {
+                        subjects2 = [...new Set(data.map(item => item.วิชา))];
+                    }
+
+                    const colors = ['#4DD0E1', '#1565C0', '#E53935']; // สีฟ้า, น้ำเงิน, แดง (ตามภาพที่ 2)
+
+                    chartData.labels = subjects2;
+                    years2.forEach((year, index) => {
+                        const scores = subjects2.map(sub => {
+                            const item = data.find(d => d.ปี === year && d.วิชา === sub);
+                            return item ? parseFloat(item.คะแนนเฉลี่ยระดับโรงเรียน).toFixed(2) : null;
+                        });
+                        chartData.datasets.push({
+                            label: `ปีการศึกษา ${year}`,
+                            data: scores,
+                            backgroundColor: colors[index % colors.length],
+                            datalabels: { anchor: 'end', align: 'top' }
+                        });
+                    });
+                    document.getElementById('chartTitle').innerHTML = titleSpan + `แผนภูมิที่ 2 เปรียบเทียบคะแนนเฉลี่ยระดับโรงเรียน ของปีการศึกษา ${years2[0]}-${years2[2]}`;
+                    break;
+            }
+
+            // ตัวเลือกทั่วไปสำหรับกราฟแท่ง
+            options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 30, bottom: 10 } },
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: { font: { family: 'Sarabun' } }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: { family: 'Sarabun' },
+                        bodyFont: { family: 'Sarabun' },
+                        callbacks: {
+                            label: context => ` ${context.dataset.label}: ${context.raw}%`
+                        }
+                    },
+                    datalabels: {
+                        color: 'black',
+                        font: { weight: 'bold', family: 'Sarabun' },
+                        formatter: value => (value && value > 0) ? value : '' // ไม่แสดงค่าที่เป็น 0 หรือ null
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            font: { family: 'Sarabun' },
+                            callback: value => value + '%'
+                        },
+                        grid: { color: '#f0f0f0' }
+                    },
+                    x: {
+                        ticks: { font: { family: 'Sarabun', weight: 'bold' } },
+                        grid: { display: false }
+                    }
+                }
+            };
+
+            // สร้างกราฟ
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: options
             });
         }
     </script>
