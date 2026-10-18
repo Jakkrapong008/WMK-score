@@ -1129,35 +1129,54 @@
             const subjects = [...new Set(data.map(d => d.วิชา))].sort();
             const sel = document.getElementById('aiSubjectSelect');
             sel.innerHTML = '';
+
+            // หากเป็นการสอบ O-NET (หรือมีการสอบหลายวิชา) ให้เพิ่มตัวเลือก "รวม" เป็นตัวเลือกแรก
+            if (exam === 'ONET' || subjects.length > 1) {
+                sel.innerHTML += `<option value="รวม">รวม (ทุกกลุ่มสาระวิชา)</option>`;
+            }
+
             subjects.forEach(sub => {
                 sel.innerHTML += `<option value="${sub}">${sub}</option>`;
             });
-            if (subjects.length > 0) sel.selectedIndex = 0;
+            if (sel.options.length > 0) sel.selectedIndex = 0;
         }
 
         function handleAiSubjectChange() {
             const exam = document.getElementById('aiExamSelect').value;
             const data = cachedExamData[exam] || [];
             const sub = document.getElementById('aiSubjectSelect').value;
-
-            // อัปเดตสาระ
             const strandSel = document.getElementById('aiStrandSelect');
-            const filteredStrands = [...new Set(data.filter(d => d.วิชา === sub).map(d => d.สาระ))].sort();
-            strandSel.innerHTML = '';
-            filteredStrands.forEach(st => {
-                if (st) strandSel.innerHTML += `<option value="${st}">${st}</option>`;
-            });
-            const totIdx = filteredStrands.findIndex(s => s === 'รวม');
-            if (totIdx !== -1) strandSel.value = 'รวม';
-            else if (filteredStrands.length > 0) strandSel.selectedIndex = 0;
-
-            // อัปเดตปี
             const yearSel = document.getElementById('aiYearSelect');
-            const years = [...new Set(data.filter(d => d.วิชา === sub).map(d => d.ปี))].sort().reverse();
-            yearSel.innerHTML = `<option value="ทุกปี">ทุกปี (วิเคราะห์แนวโน้ม 5 ปี)</option>`;
-            years.forEach(yr => {
-                yearSel.innerHTML += `<option value="${yr}">ปีการศึกษา ${yr}</option>`;
-            });
+
+            if (sub === 'รวม') {
+                // เมื่อเลือก "รวม" (ทุกวิชา) ให้สาระเป็น "รวม"
+                strandSel.innerHTML = `<option value="รวม">รวม (ภาพรวมคะแนนทุกวิชา)</option>`;
+                strandSel.value = 'รวม';
+
+                // อัปเดตปีที่มีข้อมูลทั้งหมด
+                const years = [...new Set(data.map(d => d.ปี))].sort().reverse();
+                yearSel.innerHTML = `<option value="ทุกปี">ทุกปี (วิเคราะห์แนวโน้ม 5 ปี)</option>`;
+                years.forEach(yr => {
+                    yearSel.innerHTML += `<option value="${yr}">ปีการศึกษา ${yr}</option>`;
+                });
+            } else {
+                // อัปเดตสาระเฉพาะวิชาที่เลือก
+                const filteredStrands = [...new Set(data.filter(d => d.วิชา === sub).map(d => d.สาระ))].sort();
+                strandSel.innerHTML = '';
+                filteredStrands.forEach(st => {
+                    if (st) strandSel.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+                const totIdx = filteredStrands.findIndex(s => s === 'รวม');
+                if (totIdx !== -1) strandSel.value = 'รวม';
+                else if (filteredStrands.length > 0) strandSel.selectedIndex = 0;
+
+                // อัปเดตปีของวิชานั้น
+                const years = [...new Set(data.filter(d => d.วิชา === sub).map(d => d.ปี))].sort().reverse();
+                yearSel.innerHTML = `<option value="ทุกปี">ทุกปี (วิเคราะห์แนวโน้ม 5 ปี)</option>`;
+                years.forEach(yr => {
+                    yearSel.innerHTML += `<option value="${yr}">ปีการศึกษา ${yr}</option>`;
+                });
+            }
 
             updateAiFilteredSummary();
         }
@@ -1169,9 +1188,18 @@
             const strand = document.getElementById('aiStrandSelect').value;
             const year = document.getElementById('aiYearSelect').value;
 
-            let filtered = data.filter(d => d.วิชา === sub && d.สาระ === strand);
-            if (year !== 'ทุกปี') {
-                filtered = filtered.filter(d => d.ปี === year);
+            let filtered = [];
+            if (sub === 'รวม') {
+                // เมื่อเลือก "รวม" ดึงรายการที่เป็นสาระ "รวม" ของทุกวิชา
+                filtered = data.filter(d => d.สาระ === 'รวม');
+                if (year !== 'ทุกปี') {
+                    filtered = filtered.filter(d => d.ปี === year);
+                }
+            } else {
+                filtered = data.filter(d => d.วิชา === sub && d.สาระ === strand);
+                if (year !== 'ทุกปี') {
+                    filtered = filtered.filter(d => d.ปี === year);
+                }
             }
 
             // เรียงลำดับปีจากน้อยไปมาก
@@ -1186,23 +1214,68 @@
                 return;
             }
 
-            let summaryHtml = `<div class="space-y-1">`;
-            summaryHtml += `<div class="font-bold text-gray-800">[${exam}] วิชา: ${sub} | สาระ: ${strand} (${year})</div>`;
-            filtered.forEach(item => {
-                const sch = parseFloat(item.คะแนนเฉลี่ยระดับโรงเรียน) || 0;
-                const cty = parseFloat(item.คะแนนเฉลี่ยระดับประเทศ) || 0;
-                const diff = (sch - cty).toFixed(2);
-                const isHigher = sch >= cty;
-                const badgeColor = isHigher ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100';
-                const sign = isHigher ? '+' : '';
+            let summaryHtml = `<div class="space-y-1.5">`;
+            summaryHtml += `<div class="font-bold text-gray-800">[${exam}] วิชา: ${sub === 'รวม' ? 'รวมทุกวิชา' : sub} | สาระ: ${strand} (${year})</div>`;
 
-                summaryHtml += `
-                    <div class="flex items-center justify-between text-xs py-1 border-b border-gray-100">
-                        <span>• ปี ${item.ปี}: รร. <strong>${sch.toFixed(2)}%</strong> vs ปท. <strong>${cty.toFixed(2)}%</strong></span>
-                        <span class="px-2 py-0.5 rounded font-bold ${badgeColor}">ผลต่าง: ${sign}${diff}%</span>
-                    </div>
-                `;
-            });
+            if (sub === 'รวม') {
+                // จัดกลุ่มตามปีการศึกษา
+                const yearGroups = {};
+                filtered.forEach(item => {
+                    if (!yearGroups[item.ปี]) yearGroups[item.ปี] = [];
+                    yearGroups[item.ปี].push(item);
+                });
+
+                const sortedYears = Object.keys(yearGroups).sort();
+                sortedYears.forEach(yr => {
+                    const itemsInYr = yearGroups[yr];
+                    const schAvg = itemsInYr.reduce((sum, it) => sum + (parseFloat(it.คะแนนเฉลี่ยระดับโรงเรียน) || 0), 0) / itemsInYr.length;
+                    const ctyAvg = itemsInYr.reduce((sum, it) => sum + (parseFloat(it.คะแนนเฉลี่ยระดับประเทศ) || 0), 0) / itemsInYr.length;
+                    const diff = (schAvg - ctyAvg).toFixed(2);
+                    const isHigher = schAvg >= ctyAvg;
+                    const badgeColor = isHigher ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100';
+                    const sign = isHigher ? '+' : '';
+
+                    summaryHtml += `
+                        <div class="pt-2 pb-1 font-bold text-xs text-gray-700 flex justify-between items-center border-t border-gray-200 mt-1">
+                            <span>📅 ปีการศึกษา ${yr} (เฉลี่ยรวมทุกวิชา: รร. ${schAvg.toFixed(2)}% vs ปท. ${ctyAvg.toFixed(2)}%)</span>
+                            <span class="px-2 py-0.5 rounded font-bold ${badgeColor}">ภาพรวม: ${sign}${diff}%</span>
+                        </div>
+                    `;
+
+                    itemsInYr.forEach(item => {
+                        const sch = parseFloat(item.คะแนนเฉลี่ยระดับโรงเรียน) || 0;
+                        const cty = parseFloat(item.คะแนนเฉลี่ยระดับประเทศ) || 0;
+                        const itemDiff = (sch - cty).toFixed(2);
+                        const itemHigher = sch >= cty;
+                        const itemColor = itemHigher ? 'text-emerald-600' : 'text-red-600';
+                        const itemSign = itemHigher ? '+' : '';
+
+                        summaryHtml += `
+                            <div class="flex items-center justify-between text-xs py-0.5 pl-3 border-b border-gray-50">
+                                <span>• <strong>${item.วิชา}</strong>: รร. ${sch.toFixed(2)}% vs ปท. ${cty.toFixed(2)}%</span>
+                                <span class="font-semibold ${itemColor}">(${itemSign}${itemDiff}%)</span>
+                            </div>
+                        `;
+                    });
+                });
+            } else {
+                filtered.forEach(item => {
+                    const sch = parseFloat(item.คะแนนเฉลี่ยระดับโรงเรียน) || 0;
+                    const cty = parseFloat(item.คะแนนเฉลี่ยระดับประเทศ) || 0;
+                    const diff = (sch - cty).toFixed(2);
+                    const isHigher = sch >= cty;
+                    const badgeColor = isHigher ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100';
+                    const sign = isHigher ? '+' : '';
+
+                    summaryHtml += `
+                        <div class="flex items-center justify-between text-xs py-1 border-b border-gray-100">
+                            <span>• ปี ${item.ปี}: รร. <strong>${sch.toFixed(2)}%</strong> vs ปท. <strong>${cty.toFixed(2)}%</strong></span>
+                            <span class="px-2 py-0.5 rounded font-bold ${badgeColor}">ผลต่าง: ${sign}${diff}%</span>
+                        </div>
+                    `;
+                });
+            }
+
             summaryHtml += `</div>`;
             box.innerHTML = summaryHtml;
         }
@@ -1270,7 +1343,7 @@
 
             resultCard.classList.remove('hidden');
             resultTitle.innerText = topic;
-            resultMeta.innerText = `การสอบ: ${exam} | วิชา: ${sub} | สาระ: ${strand} | ปี: ${year}`;
+            resultMeta.innerText = `การสอบ: ${exam} | วิชา: ${sub === 'รวม' ? 'รวมทุกวิชา' : sub} | สาระ: ${strand} | ปี: ${year}`;
             resultContent.innerHTML = `
                 <div class="flex items-center justify-center py-10 space-x-3 text-gray-500">
                     <div class="loader w-6 h-6 border-2 border-school-red border-t-transparent"></div>
