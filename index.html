@@ -12,6 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js Plugin for Data Labels -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <!-- Marked.js for AI Markdown Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body {
             font-family: 'Sarabun', sans-serif;
@@ -30,23 +32,79 @@
         .card {
             background: white;
             border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
         }
         .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #D32F2F;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #D32F2F;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 42px;
+            height: 42px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Markdown content styling */
+        .markdown-body {
+            line-height: 1.75;
+            color: #2d3748;
+        }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            font-weight: 700;
+            color: #1a202c;
+            margin-top: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        .markdown-body h1 { font-size: 1.4rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3rem; }
+        .markdown-body h2 { font-size: 1.25rem; }
+        .markdown-body h3 { font-size: 1.1rem; }
+        .markdown-body p { margin-bottom: 0.75rem; }
+        .markdown-body ul, .markdown-body ol {
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .markdown-body ul { list-style-type: disc; }
+        .markdown-body ol { list-style-type: decimal; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+        .markdown-body blockquote {
+            border-left: 4px solid #D32F2F;
+            padding-left: 1rem;
+            color: #4a5568;
+            background: #fff5f5;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            margin: 0.75rem 0;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .markdown-body th, .markdown-body td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .markdown-body th {
+            background-color: #f7fafc;
+            font-weight: 600;
+        }
+        @media print {
+            header, nav, footer, #aiControlPanel, #aiChatSection, #adminSection {
+                display: none !important;
+            }
+            #aiResultCard {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+        }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen flex flex-col justify-between">
 
     <!-- Header: Yellow background with Black text -->
     <header class="bg-school-yellow text-black shadow-md">
@@ -58,7 +116,7 @@
                     <p class="text-sm md:text-base opacity-80 font-medium">โรงเรียนวัดแม่กะ สำนักงานเขตพื้นที่การศึกษาประถมศึกษาเชียงใหม่ เขต 2</p>
                 </div>
             </div>
-            <div class="bg-black/5 p-3 rounded-lg backdrop-blur-sm border border-black/10">
+            <div class="bg-black/5 p-3 rounded-lg backdrop-blur-sm border border-black/10 flex items-center space-x-3">
                 <span id="currentDate" class="text-sm font-bold"></span>
             </div>
         </div>
@@ -67,119 +125,507 @@
     <!-- Navigation Tabs -->
     <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
         <div class="container mx-auto px-4">
-            <div class="flex justify-center space-x-4 md:space-x-8 overflow-x-auto">
-                <button onclick="switchTab('RT')" id="tab-RT" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 tab-active whitespace-nowrap">RT</button>
-                <button onclick="switchTab('NT')" id="tab-NT" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap">NT</button>
-                <button onclick="switchTab('ONET')" id="tab-ONET" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap">O-NET</button>
-                <!-- เพิ่มแท็บ กราฟรวม -->
-                <button onclick="switchTab('OVERALL')" id="tab-OVERALL" class="px-4 md:px-6 py-4 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap">กราฟรวม</button>
+            <div class="flex justify-start md:justify-center space-x-2 md:space-x-6 overflow-x-auto py-1">
+                <button onclick="switchTab('RT')" id="tab-RT" class="px-4 md:px-5 py-3 text-gray-600 hover:text-school-red transition-all duration-300 tab-active whitespace-nowrap font-medium">RT</button>
+                <button onclick="switchTab('NT')" id="tab-NT" class="px-4 md:px-5 py-3 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap font-medium">NT</button>
+                <button onclick="switchTab('ONET')" id="tab-ONET" class="px-4 md:px-5 py-3 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap font-medium">O-NET</button>
+                <button onclick="switchTab('OVERALL')" id="tab-OVERALL" class="px-4 md:px-5 py-3 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap font-medium">กราฟรวม</button>
+                <!-- แถบใหม่: วิเคราะห์คะแนน AI -->
+                <button onclick="switchTab('AI')" id="tab-AI" class="px-4 md:px-5 py-3 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap font-medium flex items-center">
+                    <span class="mr-1.5 text-base">✨</span> วิเคราะห์คะแนน AI
+                </button>
+                <!-- แถบใหม่: Admin -->
+                <button onclick="switchTab('ADMIN')" id="tab-ADMIN" class="px-4 md:px-5 py-3 text-gray-600 hover:text-school-red transition-all duration-300 whitespace-nowrap font-medium flex items-center">
+                    <span class="mr-1.5 text-sm">🔒</span> Admin
+                </button>
             </div>
         </div>
     </nav>
 
-    <main class="container mx-auto px-4 py-8">
-        <!-- Control Panel -->
-        <div class="card p-6 mb-8 border-t-4 border-school-red">
-            <!-- Normal Controls (สำหรับ RT, NT, ONET) -->
-            <div id="normalControls" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">เลือกวิชา</label>
-                    <select id="subjectSelect" onchange="handleSubjectChange()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
-                    </select>
+    <main class="container mx-auto px-4 py-8 flex-grow">
+        
+        <!-- SECTION 1: ส่วนควบคุมและกราฟ (สำหรับ RT, NT, ONET, กราฟรวม) -->
+        <div id="chartSectionWrapper">
+            <!-- Control Panel -->
+            <div id="controlPanelCard" class="card p-6 mb-8 border-t-4 border-school-red">
+                <!-- Normal Controls (สำหรับ RT, NT, ONET) -->
+                <div id="normalControls" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">เลือกวิชา</label>
+                        <select id="subjectSelect" onchange="handleSubjectChange()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">เลือกสาระ</label>
+                        <select id="strandSelect" onchange="filterData()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                        </select>
+                    </div>
+                    <div class="flex justify-end">
+                        <button onclick="loadInitialData()" class="bg-school-red hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            รีเฟรชข้อมูล
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">เลือกสาระ</label>
-                    <select id="strandSelect" onchange="filterData()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
-                    </select>
+
+                <!-- Overall Controls (สำหรับ กราฟรวม) - ซ่อนโดยเริ่มต้น -->
+                <div id="overallControls" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end hidden">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">การสอบ</label>
+                        <select id="examSelect" onchange="handleOverallFilterChange('exam')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                            <option value="RT">RT</option>
+                            <option value="NT">NT</option>
+                            <option value="ONET">O-NET</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">ปีการศึกษา</label>
+                        <select id="yearSelect" onchange="handleOverallFilterChange('year')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">ประเภทกราฟ</label>
+                        <select id="chartTypeSelect" onchange="handleOverallFilterChange('type')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
+                            <option value="type1">แบบที่ 1: เปรียบเทียบ รร. กับ ปท.</option>
+                            <option value="type2">แบบที่ 2: เปรียบเทียบย้อนหลัง 3 ปี</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end">
+                        <button onclick="loadOverallData()" class="bg-school-red hover:bg-red-700 text-white w-full md:w-auto px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center justify-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            รีเฟรชข้อมูลรวม
+                        </button>
+                    </div>
                 </div>
-                <div class="flex justify-end">
-                    <button onclick="loadInitialData()" class="bg-school-red hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        รีเฟรชข้อมูล
+            </div>
+
+            <!-- Loading State สำหรับกราฟ -->
+            <div id="loading" class="flex flex-col items-center justify-center py-20 hidden">
+                <div class="loader mb-4"></div>
+                <p class="text-gray-500 animate-pulse">กำลังโหลดข้อมูลสารสนเทศ...</p>
+            </div>
+
+            <!-- Chart Section -->
+            <div id="chartContainer" class="card p-6 min-h-[500px]">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                        <span id="chartTitle" class="bg-school-red/10 text-school-red px-3 py-1 rounded-full text-sm mr-3 font-bold">RT</span>
+                        <span id="chartSubtitle">กราฟแสดงแนวโน้มคะแนนเฉลี่ย</span>
+                    </h2>
+                    <!-- Normal Legend (สำหรับกราฟเส้น) -->
+                    <div id="normalLegend" class="flex space-x-6 mt-2 md:mt-0">
+                        <div class="flex items-center">
+                            <span class="w-4 h-1 bg-red-600 mr-2"></span>
+                            <span class="text-xs font-bold text-gray-600">โรงเรียน</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-4 h-1 border-b-2 border-dashed border-yellow-500 mr-2"></span>
+                            <span class="text-xs font-bold text-gray-600">ประเทศ</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative h-[450px]">
+                    <canvas id="scoreChart"></canvas>
+                </div>
+                <div id="emptyState" class="hidden absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
+                    <p class="text-gray-400 italic">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: แถบวิเคราะห์คะแนน AI (Score Analysis with Typhoon AI) -->
+        <div id="aiSection" class="hidden space-y-8">
+            <!-- หัวเรื่องและคำอธิบายแถบ AI -->
+            <div class="bg-gradient-to-r from-red-700 via-red-600 to-amber-500 text-white rounded-2xl p-6 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div class="inline-flex items-center bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                        <span>✨ ขับเคลื่อนการศึกษาด้วยปัญญาประดิษฐ์ (Data-Driven Education)</span>
+                    </div>
+                    <h2 class="text-2xl font-bold">ระบบวิเคราะห์คะแนนอัจฉริยะ (OpenTyphoon AI)</h2>
+                    <p class="text-sm text-red-100 mt-1 max-w-2xl">
+                        วิเคราะห์ผลการประเมิน RT, NT และ O-NET ย้อนหลังแบบเจาะลึก ค้นหาจุดอ่อน (Misconception), แนะแนวทาง Active Learning, ร่างหัวข้อ PLC และสรุปผลสำหรับผู้บริหาร/SAR พร้อมบันทึกผลลง Google Sheets อัตโนมัติ
+                    </p>
+                </div>
+                <div class="flex items-center bg-white text-gray-800 px-4 py-2 rounded-xl shadow-sm text-xs font-semibold">
+                    <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full mr-2 animate-ping"></span>
+                    <span>โมเดล: <strong id="aiModelBadge" class="text-school-red">OpenTyphoon AI</strong></span>
+                </div>
+            </div>
+
+            <!-- ตัวกรองข้อมูลสำหรับส่งให้ AI วิเคราะห์ -->
+            <div id="aiControlPanel" class="card p-6 border-t-4 border-school-red">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <svg class="w-5 h-5 text-school-red mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    กำหนดขอบเขตข้อมูลที่ต้องการวิเคราะห์
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">1. การสอบ</label>
+                        <select id="aiExamSelect" onchange="handleAiExamChange()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red font-medium">
+                            <option value="RT">RT (ป.1)</option>
+                            <option value="NT">NT (ป.3)</option>
+                            <option value="ONET">O-NET (ป.6)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">2. วิชา</label>
+                        <select id="aiSubjectSelect" onchange="handleAiSubjectChange()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red font-medium">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">3. สาระ / ตัวชี้วัด</label>
+                        <select id="aiStrandSelect" onchange="updateAiFilteredSummary()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red font-medium">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">4. ช่วงปีการศึกษา</label>
+                        <select id="aiYearSelect" onchange="updateAiFilteredSummary()" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red font-medium">
+                            <option value="ทุกปี">ทุกปี (วิเคราะห์แนวโน้ม 5 ปี)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- การ์ดสรุปข้อมูลคะแนนจริงที่จะส่งให้ AI (Filtered Data Context) -->
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">สรุปข้อมูลคะแนนโรงเรียนเทียบระดับประเทศ (ส่งเข้า AI Prompt)</span>
+                        <span id="aiDataCountBadge" class="bg-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0 รายการ</span>
+                    </div>
+                    <div id="aiDataSummaryBox" class="text-sm text-gray-700 max-h-36 overflow-y-auto font-mono bg-white p-3 rounded-lg border border-gray-200">
+                        กำลังเตรียมข้อมูลสรุป...
+                    </div>
+                </div>
+
+                <!-- ปุ่มคำสั่งสำเร็จรูป (Preset Analysis Buttons) ตามเอกสารแนบ -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">เลือกมิติการวิเคราะห์ (ปุ่มสำเร็จรูป Preset):</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <!-- ปุ่ม 1 -->
+                        <button onclick="triggerAiPreset('misconception')" class="flex items-start p-3 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition text-left group">
+                            <span class="text-xl mr-3 group-hover:scale-110 transition-transform">🔍</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-school-red">วิเคราะห์จุดอ่อน & ข้อเข้าใจคลาดเคลื่อน</h4>
+                                <p class="text-xs text-gray-600 mt-0.5">ค้นหา Misconception ที่ทำให้คะแนนต่ำกว่าเกณฑ์ระดับประเทศ</p>
+                            </div>
+                        </button>
+                        <!-- ปุ่ม 2 -->
+                        <button onclick="triggerAiPreset('teaching')" class="flex items-start p-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition text-left group">
+                            <span class="text-xl mr-3 group-hover:scale-110 transition-transform">💡</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-amber-900">แนะแนวทางการสอน (Active Learning)</h4>
+                                <p class="text-xs text-gray-600 mt-0.5">ออกแบบกิจกรรม, บอร์ดเกม, สื่อ AR และ Unplugged Coding</p>
+                            </div>
+                        </button>
+                        <!-- ปุ่ม 3 -->
+                        <button onclick="triggerAiPreset('plc')" class="flex items-start p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition text-left group">
+                            <span class="text-xl mr-3 group-hover:scale-110 transition-transform">👥</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-blue-900">ร่างหัวข้อ PLC & นวัตกรรมครู</h4>
+                                <p class="text-xs text-gray-600 mt-0.5">กำหนดโจทย์ PLC ร่วมกันและออกแบบวิจัยในชั้นเรียนหน้าเดียว</p>
+                            </div>
+                        </button>
+                        <!-- ปุ่ม 4 -->
+                        <button onclick="triggerAiPreset('sar')" class="flex items-start p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition text-left group">
+                            <span class="text-xl mr-3 group-hover:scale-110 transition-transform">📊</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-emerald-900">สรุปรายงานผู้บริหาร & SAR (SDG4)</h4>
+                                <p class="text-xs text-gray-600 mt-0.5">จัดทำข้อความเชิงประจักษ์ตอบมาตรฐาน สมศ. และจัดสรรงบประมาณ</p>
+                            </div>
+                        </button>
+                        <!-- ปุ่ม 5 -->
+                        <button onclick="triggerAiPreset('transition')" class="flex items-start p-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition text-left group">
+                            <span class="text-xl mr-3 group-hover:scale-110 transition-transform">🔄</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-purple-900">การส่งต่อนักเรียนระหว่างช่วงชั้น</h4>
+                                <p class="text-xs text-gray-600 mt-0.5">เชื่อมโยงพัฒนาการ (RT ป.1 ➔ NT ป.3 ➔ O-NET ป.6)</p>
+                            </div>
+                        </button>
+                        <!-- ปุ่ม 6: กำหนดประเด็นเอง -->
+                        <button onclick="focusCustomPrompt()" class="flex items-start p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition text-left group">
+                            <span class="text-xl mr-3 group-hover:scale-110 transition-transform">✍️</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-800">ระบุคำถาม/โจทย์วิเคราะห์เอง</h4>
+                                <p class="text-xs text-gray-600 mt-0.5">พิมพ์คำสั่งหรือหัวข้อที่ต้องการปรึกษา AI เพิ่มเติม</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ช่องพิมพ์ข้อกำหนดเพิ่มเติม / ประเด็นเฉพาะ -->
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">คำถามหรือโจทย์เพิ่มเติมที่คุณครูต้องการระบุเฉพาะ (ไม่จำเป็นต้องกรอก):</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="aiCustomPromptInput" placeholder="เช่น ขอไอเดียเกมในห้องเรียนสำหรับตัวชี้วัดนี้ 1 กิจกรรม หรือ ขอใบงานประเมินผล..." class="flex-grow p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red">
+                        <button onclick="triggerAiPreset('custom')" id="aiSubmitBtn" class="bg-school-red hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition shadow-md flex items-center whitespace-nowrap">
+                            <span id="aiBtnText">ประมวลผล AI</span>
+                            <div id="aiBtnSpinner" class="loader w-4 h-4 border-2 border-white border-t-transparent ml-2 hidden"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กล่องแสดงผลการวิเคราะห์ AI -->
+            <div id="aiResultCard" class="card p-6 border-t-4 border-amber-500 hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-4 border-b border-gray-200 gap-3">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center">
+                                <span class="mr-1">🤖</span> บทวิเคราะห์โดย OpenTyphoon AI
+                            </span>
+                            <span id="sheetSaveStatusBadge" class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center">
+                                <span class="mr-1">💾</span> บันทึกลง Google Sheet แล้ว
+                            </span>
+                        </div>
+                        <h3 id="aiResultTitle" class="text-lg font-bold text-gray-800 mt-2">ผลการวิเคราะห์</h3>
+                        <p id="aiResultMeta" class="text-xs text-gray-500 mt-0.5"></p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="copyAiResult()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition flex items-center">
+                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <span id="copyBtnText">คัดลอกข้อความ</span>
+                        </button>
+                        <button onclick="window.print()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition flex items-center">
+                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            พิมพ์รายงาน
+                        </button>
+                    </div>
+                </div>
+
+                <!-- เนื้อหา Markdown ที่ได้จาก AI -->
+                <div id="aiResultContent" class="markdown-body bg-white p-4 rounded-xl border border-gray-100 min-h-[150px]">
+                </div>
+            </div>
+
+            <!-- ช่องสนทนาถาม-ตอบเพิ่มเติม (Follow-up Chat) -->
+            <div id="aiChatSection" class="card p-6 border-t-4 border-blue-500 hidden">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b">
+                    <div class="flex items-center">
+                        <span class="text-xl mr-2">💬</span>
+                        <div>
+                            <h3 class="font-bold text-gray-800 text-base">ถาม-ตอบเพิ่มเติมกับ AI ต่อยอดจากบทวิเคราะห์ (Follow-up Chat)</h3>
+                            <p class="text-xs text-gray-500">สอบถามรายละเอียดเพิ่มเติม เช่น ขอตัวอย่างใบงาน แผนกิจกรรม หรือเกณฑ์การประเมิน</p>
+                        </div>
+                    </div>
+                    <button onclick="clearChatHistory()" class="text-xs text-gray-400 hover:text-red-500 transition">ล้างการสนทนา</button>
+                </div>
+
+                <!-- ตัวเลือกคำถามสำเร็จรูปด่วน (Quick Chips) -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <span class="text-xs text-gray-500 self-center">ข้อความแนะนำ:</span>
+                    <button onclick="sendQuickChat('ขอตัวอย่างกิจกรรมการเรียนรู้แบบ Active Learning 1 แผนการสอน')" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-full border border-blue-200 transition">
+                        🎯 ขอแผน Active Learning 1 แผน
+                    </button>
+                    <button onclick="sendQuickChat('ขอตัวอย่างใบงานสำหรับนักเรียนเพื่อแก้ไขจุดอ่อนในตัวชี้วัดนี้')" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-full border border-blue-200 transition">
+                        📝 ขอตัวอย่างใบงาน
+                    </button>
+                    <button onclick="sendQuickChat('ขอไอเดียเกมหรือสื่อการสอนดิจิทัลที่สอดคล้องกับเรื่องนี้')" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-full border border-blue-200 transition">
+                        🎮 ขอไอเดียสื่อเกมในห้องเรียน
+                    </button>
+                </div>
+
+                <!-- กล่องข้อความแชตต่อเนื่อง -->
+                <div id="chatMessagesContainer" class="space-y-3 mb-4 max-h-96 overflow-y-auto p-3 bg-gray-50 rounded-xl border border-gray-200">
+                    <!-- Dynamic chat messages inserted here -->
+                </div>
+
+                <!-- กล่องกรอกคำถามแชต -->
+                <div class="flex gap-2">
+                    <input type="text" id="chatInput" onkeypress="if(event.key === 'Enter') sendChat()" placeholder="พิมพ์คำถามต่อยอดที่ต้องการถาม AI..." class="flex-grow p-2.5 bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red">
+                    <button onclick="sendChat()" id="chatSendBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition shadow flex items-center">
+                        <span>ส่งคำถาม</span>
+                        <div id="chatSpinner" class="loader w-3.5 h-3.5 border-2 border-white border-t-transparent ml-2 hidden"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: แถบ ADMIN (Password Protected: adwmk) -->
+        <div id="adminSection" class="hidden max-w-4xl mx-auto space-y-8">
+            
+            <!-- กรณีที่ยังไม่ได้ล็อกอิน: แสดงหน้าต่างกรอกรหัสผ่าน -->
+            <div id="adminLoginCard" class="card p-8 text-center max-w-md mx-auto border-t-4 border-school-red">
+                <div class="w-16 h-16 bg-red-100 text-school-red rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                    🔒
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">เข้าสู่ระบบผู้ดูแลระบบ (Admin)</h3>
+                <p class="text-sm text-gray-500 mb-6">สำหรับตั้งค่า OpenTyphoon API Key และจัดการฐานข้อมูล Google Sheets</p>
+                
+                <div class="space-y-4 text-left">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">รหัสผ่าน Admin</label>
+                        <input type="password" id="adminPasswordInput" onkeypress="if(event.key === 'Enter') handleAdminLogin()" placeholder="กรอกรหัสผ่านเข้าใช้งาน..." class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-school-red focus:border-school-red">
+                    </div>
+                    <div id="adminLoginError" class="text-xs text-red-600 hidden font-semibold">
+                        รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+                    </div>
+                    <button onclick="handleAdminLogin()" id="adminLoginBtn" class="w-full bg-school-red hover:bg-red-700 text-white py-2.5 rounded-lg text-sm font-bold transition shadow-md flex items-center justify-center">
+                        <span id="adminLoginBtnText">เข้าสู่ระบบ</span>
+                        <div id="adminLoginSpinner" class="loader w-4 h-4 border-2 border-white border-t-transparent ml-2 hidden"></div>
                     </button>
                 </div>
             </div>
 
-            <!-- Overall Controls (สำหรับ กราฟรวม) - ซ่อนโดยเริ่มต้น -->
-            <div id="overallControls" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end hidden">
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">การสอบ</label>
-                    <select id="examSelect" onchange="handleOverallFilterChange('exam')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
-                        <option value="RT">RT</option>
-                        <option value="NT">NT</option>
-                        <option value="ONET">O-NET</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">ปีการศึกษา</label>
-                    <select id="yearSelect" onchange="handleOverallFilterChange('year')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">ประเภทกราฟ</label>
-                    <select id="chartTypeSelect" onchange="handleOverallFilterChange('type')" class="w-full p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-red focus:border-school-red block transition-all">
-                        <option value="type1">แบบที่ 1: เปรียบเทียบ รร. กับ ปท.</option>
-                        <option value="type2">แบบที่ 2: เปรียบเทียบย้อนหลัง 3 ปี</option>
-                    </select>
-                </div>
-                <div class="flex justify-end">
-                    <button onclick="loadOverallData()" class="bg-school-red hover:bg-red-700 text-white w-full md:w-auto px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-md flex items-center justify-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        รีเฟรชข้อมูลรวม
+            <!-- กรณีล็อกอินแล้ว: แผงควบคุม Admin Dashboard -->
+            <div id="adminDashboard" class="hidden space-y-6">
+                <!-- แถบหัวเรื่อง Admin พร้อมปุ่ม Logout -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 gap-3">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">⚙️</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">แผงจัดการผู้ดูแลระบบ (Admin Control Panel)</h3>
+                            <p class="text-xs text-gray-500">โรงเรียนวัดแม่กะ | สิทธิ์การเข้าถึงระดับผู้ดูแล</p>
+                        </div>
+                    </div>
+                    <button onclick="handleAdminLogout()" class="text-xs bg-gray-100 hover:bg-red-50 hover:text-school-red text-gray-600 px-3 py-1.5 rounded-lg font-bold transition border border-gray-200">
+                        ออกจากระบบ (Logout)
                     </button>
                 </div>
-            </div>
-        </div>
 
-        <!-- Loading State -->
-        <div id="loading" class="flex flex-col items-center justify-center py-20 hidden">
-            <div class="loader mb-4"></div>
-            <p class="text-gray-500 animate-pulse">กำลังโหลดข้อมูลสารสนเทศ...</p>
-        </div>
-
-        <!-- Chart Section -->
-        <div id="chartContainer" class="card p-6 min-h-[500px]">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4">
-                <h2 class="text-xl font-bold text-gray-800 flex items-center">
-                    <span id="chartTitle" class="bg-school-red/10 text-school-red px-3 py-1 rounded-full text-sm mr-3 font-bold">RT</span>
-                    <span id="chartSubtitle">กราฟแสดงแนวโน้มคะแนนเฉลี่ย</span>
-                </h2>
-                <!-- Normal Legend (สำหรับกราฟเส้น) -->
-                <div id="normalLegend" class="flex space-x-6 mt-2 md:mt-0">
-                    <div class="flex items-center">
-                        <span class="w-4 h-1 bg-red-600 mr-2"></span>
-                        <span class="text-xs font-bold text-gray-600">โรงเรียน</span>
+                <!-- การ์ด 1: ตั้งค่า OpenTyphoon API Key & Model -->
+                <div class="card p-6 border-t-4 border-amber-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-base font-bold text-gray-800 flex items-center">
+                            <span class="mr-2 text-lg">⚡</span> ตั้งค่า OpenTyphoon AI API Key
+                        </h4>
+                        <a href="https://opentyphoon.ai/" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline flex items-center font-medium">
+                            สมัครขอรับ API Key ที่ opentyphoon.ai ↗
+                        </a>
                     </div>
-                    <div class="flex items-center">
-                        <span class="w-4 h-1 border-b-2 border-dashed border-yellow-500 mr-2"></span>
-                        <span class="text-xs font-bold text-gray-600">ประเทศ</span>
+                    <p class="text-xs text-gray-600 mb-4">
+                        ระบบจะเก็บค่า API Key ไว้ในชีท <code>CONFIG</code> บน Google Spreadsheet ของโรงเรียนอย่างปลอดภัย และให้เซิร์ฟเวอร์ Apps Script เรียกประมวลผลโดยไม่เปิดเผย Key ให้ผู้ใช้งานทั่วไป
+                    </p>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">OpenTyphoon API Key</label>
+                            <div class="relative">
+                                <input type="password" id="typhoonApiKeyInput" placeholder="sk-..." class="w-full p-2.5 pr-10 border border-gray-300 rounded-lg text-sm font-mono focus:ring-school-red focus:border-school-red">
+                                <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 text-sm p-1">
+                                    👁️
+                                </button>
+                            </div>
+                            <span id="currentKeyStatus" class="text-xs text-gray-500 mt-1 block font-mono">สถานะ: กำลังตรวจสอบ...</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">รุ่นโมเดล OpenTyphoon ที่ใช้งาน</label>
+                            <div class="flex items-center space-x-2 bg-gray-50 border border-gray-300 rounded-lg p-2.5">
+                                <span class="text-amber-500 font-bold">⚡</span>
+                                <span id="detectedModelText" class="text-xs md:text-sm font-semibold text-gray-800">ระบบตรวจจับและเลือกรุ่นที่พร้อมใช้งานให้อัตโนมัติ</span>
+                            </div>
+                            <p class="text-[11px] text-gray-500 mt-1">
+                                *ระบบจะค้นหาและเลือกรุ่นโมเดลภาษา (Chat/Instruct) ที่ดีที่สุดที่สิทธิ์ API Key ของคุณสามารถใช้งานได้โดยอัตโนมัติ ไม่ต้องเลือกเอง
+                            </p>
+                        </div>
+
+                        <!-- แจ้งเตือนสถานะการบันทึกหรือทดสอบ -->
+                        <div id="adminActionAlert" class="hidden p-3 rounded-lg text-xs font-semibold"></div>
+
+                        <div class="flex flex-wrap gap-3 pt-2">
+                            <button onclick="saveAdminConfig()" id="saveConfigBtn" class="bg-school-red hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-md flex items-center">
+                                <span id="saveConfigBtnText">บันทึกการตั้งค่าลงชีท CONFIG</span>
+                                <div id="saveConfigSpinner" class="loader w-4 h-4 border-2 border-white border-t-transparent ml-2 hidden"></div>
+                            </button>
+                            <button onclick="testTyphoonConnection()" id="testApiBtn" class="bg-gray-800 hover:bg-black text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition flex items-center">
+                                <span id="testApiBtnText">ทดสอบการเชื่อมต่อ API</span>
+                                <div id="testApiSpinner" class="loader w-4 h-4 border-2 border-white border-t-transparent ml-2 hidden"></div>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="relative h-[450px]">
-                <canvas id="scoreChart"></canvas>
-            </div>
-            <div id="emptyState" class="hidden absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
-                <p class="text-gray-400 italic">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</p>
+
+                <!-- การ์ด 2: จัดการและสร้างชีทระบบอัตโนมัติ -->
+                <div class="card p-6 border-t-4 border-emerald-500">
+                    <h4 class="text-base font-bold text-gray-800 mb-2 flex items-center">
+                        <span class="mr-2 text-lg">📑</span> โครงสร้างฐานข้อมูล Google Sheets
+                    </h4>
+                    <p class="text-xs text-gray-600 mb-3">
+                        เชื่อมโยงกับ Google Spreadsheet ID: <code class="bg-gray-100 px-2 py-0.5 rounded text-school-red font-bold">1mUXqzM78u0-TsNwSLpTg_OCeNoBWRZjAh_U7d87Lf20</code>
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <a href="https://docs.google.com/spreadsheets/d/1mUXqzM78u0-TsNwSLpTg_OCeNoBWRZjAh_U7d87Lf20/edit" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center">
+                            เปิดดู Google Sheets ↗
+                        </a>
+                        <button onclick="initSystemSheets()" id="initSheetsBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-xs font-bold transition border border-gray-300 flex items-center">
+                            <span id="initSheetsBtnText">ตรวจสอบ / สร้างชีท CONFIG และ AI_LOGS</span>
+                            <div id="initSheetsSpinner" class="loader w-3.5 h-3.5 border-2 border-gray-700 border-t-transparent ml-2 hidden"></div>
+                        </button>
+                    </div>
+                    <div id="initSheetsAlert" class="hidden mt-3 p-3 rounded-lg text-xs font-semibold"></div>
+                </div>
+
+                <!-- การ์ด 3: บันทึกประวัติการวิเคราะห์ล่าสุด (AI Logs Table) -->
+                <div class="card p-6 border-t-4 border-blue-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h4 class="text-base font-bold text-gray-800 flex items-center">
+                                <span class="mr-2 text-lg">📜</span> ประวัติการประมวลผล AI ล่าสุด (จากชีท AI_LOGS)
+                            </h4>
+                            <p class="text-xs text-gray-500">บันทึกหัวข้อ คะแนน และบทวิเคราะห์ที่ครูได้สั่งการทำงาน</p>
+                        </div>
+                        <button onclick="loadAdminLogs()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-bold transition">
+                            รีเฟรชประวัติ
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left text-gray-600 border border-gray-200">
+                            <thead class="bg-gray-100 text-gray-700 uppercase font-bold">
+                                <tr>
+                                    <th class="p-2.5">วัน-เวลา</th>
+                                    <th class="p-2.5">การสอบ</th>
+                                    <th class="p-2.5">ปี</th>
+                                    <th class="p-2.5">วิชา / สาระ</th>
+                                    <th class="p-2.5">หัวข้อการวิเคราะห์</th>
+                                    <th class="p-2.5">ผลวิเคราะห์</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminLogsTableBody" class="divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="6" class="p-4 text-center text-gray-400">คลิก "รีเฟรชประวัติ" เพื่อโหลดข้อมูล</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </div>
+
     </main>
 
     <footer class="bg-gray-800 text-gray-400 py-8 mt-12">
         <div class="container mx-auto px-4 text-center">
-            <p class="mb-2">© 2025 โรงเรียนวัดแม่กะ - ระบบรายงานผลการประเมินคุณภาพผู้เรียน</p>
-            <p class="text-xs opacity-50 uppercase tracking-widest">Educational Quality Assessment Information System</p>
+            <p class="mb-2">© 2025 โรงเรียนวัดแม่กะ - ระบบรายงานผลการประเมินคุณภาพผู้เรียนและวิเคราะห์สารสนเทศ AI</p>
+            <p class="text-xs opacity-50 uppercase tracking-widest">Educational Quality Assessment Information System with OpenTyphoon AI</p>
         </div>
     </footer>
 
+    <!-- JavaScript Application Logic -->
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbxVmnZOnifSj3rYsNmci1aDUlh-VBkKQBRhVvkjJUK7m3UpB2boBrddoOPI9mK7btInsw/exec';
+        
+        // สถานะการทำงานทั่วไป
         let currentTab = 'RT';
         let fullData = [];
         let fullOverallData = [];
         let myChart = null;
 
-        // Register DataLabels plugin
+        // ข้อมูลแคชสำหรับแถบ AI
+        let cachedExamData = {
+            'RT': [],
+            'NT': [],
+            'ONET': []
+        };
+        let currentAiFilteredItems = [];
+        let currentAiTopic = '';
+        let lastAiAnalysisText = '';
+        let chatConversationHistory = [];
+
+        // สถานะ Admin Session
+        let adminAuthToken = sessionStorage.getItem('wmk_admin_auth') || '';
+
+        // Register Chart.js DataLabels plugin
         Chart.register(ChartDataLabels);
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('th-TH', {
@@ -188,44 +634,67 @@
 
         window.onload = function() {
             loadInitialData();
+            checkAiConfigStatus();
         };
 
-        // ฟังก์ชันสลับแท็บ
+        // ==========================================
+        // 1. ฟังก์ชันสลับแท็บ (Tab Navigation)
+        // ==========================================
         function switchTab(tab) {
-            if (currentTab === tab) return;
             currentTab = tab;
             
-            // อัปเดตสถานะปุ่มแท็บ
+            // ปรับสีปุ่มแท็บ
             document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('tab-active'));
-            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            if (activeBtn) activeBtn.classList.add('tab-active');
 
-            const normalControls = document.getElementById('normalControls');
-            const overallControls = document.getElementById('overallControls');
-            const normalLegend = document.getElementById('normalLegend');
-            const chartTitle = document.getElementById('chartTitle');
-            const chartSubtitle = document.getElementById('chartSubtitle');
+            // ซ่อน/แสดงแต่ละ Section
+            const chartSectionWrapper = document.getElementById('chartSectionWrapper');
+            const aiSection = document.getElementById('aiSection');
+            const adminSection = document.getElementById('adminSection');
 
-            // แสดง/ซ่อน ส่วนควบคุมและ Legend ตามแท็บที่เลือก
-            if (tab === 'OVERALL') {
-                normalControls.classList.add('hidden');
-                overallControls.classList.remove('hidden');
-                normalLegend.classList.add('hidden');
-                chartTitle.innerText = 'กราฟรวม';
-                chartSubtitle.innerText = 'เปรียบเทียบผลการประเมิน';
-                loadOverallData();
+            chartSectionWrapper.classList.add('hidden');
+            aiSection.classList.add('hidden');
+            adminSection.classList.add('hidden');
+
+            if (tab === 'AI') {
+                aiSection.classList.remove('hidden');
+                initAiSection();
+            } else if (tab === 'ADMIN') {
+                adminSection.classList.remove('hidden');
+                checkAdminSession();
             } else {
-                normalControls.classList.remove('hidden');
-                overallControls.classList.add('hidden');
-                normalLegend.classList.remove('hidden');
-                chartTitle.innerText = tab === 'ONET' ? 'O-NET' : tab;
-                chartSubtitle.innerText = 'กราฟแสดงแนวโน้มคะแนนเฉลี่ย';
-                loadInitialData();
+                chartSectionWrapper.classList.remove('hidden');
+                
+                const normalControls = document.getElementById('normalControls');
+                const overallControls = document.getElementById('overallControls');
+                const normalLegend = document.getElementById('normalLegend');
+                const chartTitle = document.getElementById('chartTitle');
+                const chartSubtitle = document.getElementById('chartSubtitle');
+
+                if (tab === 'OVERALL') {
+                    normalControls.classList.add('hidden');
+                    overallControls.classList.remove('hidden');
+                    normalLegend.classList.add('hidden');
+                    chartTitle.innerText = 'กราฟรวม';
+                    chartSubtitle.innerText = 'เปรียบเทียบผลการประเมิน';
+                    loadOverallData();
+                } else {
+                    normalControls.classList.remove('hidden');
+                    overallControls.classList.add('hidden');
+                    normalLegend.classList.remove('hidden');
+                    chartTitle.innerText = tab === 'ONET' ? 'O-NET' : tab;
+                    chartSubtitle.innerText = 'กราฟแสดงแนวโน้มคะแนนเฉลี่ย';
+                    loadInitialData();
+                }
             }
         }
 
-        // โหลดข้อมูลสำหรับแท็บปกติ (RT, NT, ONET)
+        // ==========================================
+        // 2. ฟังก์ชันโหลดข้อมูลกราฟเดิม (RT, NT, ONET, OVERALL)
+        // ==========================================
         async function loadInitialData() {
-            if (currentTab === 'OVERALL') return; // ป้องกันการโหลดผิดฟังก์ชัน
+            if (currentTab === 'OVERALL' || currentTab === 'AI' || currentTab === 'ADMIN') return;
 
             const loading = document.getElementById('loading');
             const chartBox = document.getElementById('chartContainer');
@@ -239,6 +708,7 @@
                 
                 if (result.status === 'success') {
                     fullData = result.data;
+                    cachedExamData[currentTab] = result.data; // เก็บแคชไว้ให้ AI ใช้ด้วย
                     populateSubjectFilter();
                     updateStrandFilter(); 
                     filterData();
@@ -252,7 +722,6 @@
             }
         }
 
-        // โหลดข้อมูลสำหรับแท็บกราฟรวม
         async function loadOverallData() {
             const loading = document.getElementById('loading');
             const chartBox = document.getElementById('chartContainer');
@@ -261,7 +730,6 @@
             chartBox.classList.add('opacity-30');
 
             try {
-                // เรียก API ด้วย parameter sheet=OVERALL
                 const response = await fetch(`${API_URL}?sheet=OVERALL`);
                 const result = await response.json();
                 
@@ -279,7 +747,6 @@
             }
         }
 
-        // --- ฟังก์ชันสำหรับแท็บปกติ ---
         function populateSubjectFilter() {
             const subjects = [...new Set(fullData.map(item => item.วิชา))].sort();
             const subjectSelect = document.getElementById('subjectSelect');
@@ -402,12 +869,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: {
-                        padding: {
-                            top: 30,
-                            bottom: 10
-                        }
-                    },
+                    layout: { padding: { top: 30, bottom: 10 } },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -446,11 +908,8 @@
             });
         }
 
-        // --- ฟังก์ชันสำหรับแท็บกราฟรวม ---
-
         function populateYearFilter() {
             const selectedExam = document.getElementById('examSelect').value;
-            // กรองเอาเฉพาะข้อมูลของการสอบที่เลือกมาหาปีการศึกษาที่มี
             const examData = fullOverallData.filter(item => item.การสอบ === selectedExam);
             const years = [...new Set(examData.map(item => item.ปี))].sort().reverse();
             
@@ -462,7 +921,6 @@
                 yearSelect.innerHTML += `<option value="${year}">${year}</option>`;
             });
             
-            // พยายามรักษาการเลือกปีเดิมไว้ ถ้ามีการเปลี่ยนประเภทการสอบ
             if (years.includes(currentSelectedYear)) {
                 yearSelect.value = currentSelectedYear;
             } else if (years.length > 0) {
@@ -472,7 +930,7 @@
 
         function handleOverallFilterChange(source) {
             if (source === 'exam') {
-                populateYearFilter(); // หากเปลี่ยนการสอบ ให้อัปเดตรายการปีการศึกษาใหม่
+                populateYearFilter();
             }
             filterOverallData();
         }
@@ -482,9 +940,7 @@
             const selectedExam = document.getElementById('examSelect').value;
             const chartType = document.getElementById('chartTypeSelect').value;
             
-            // กรองเอาเฉพาะข้อมูลที่เป็นสาระ "รวม" และตรงกับการสอบที่เลือกใน Dropdown
             let filtered = fullOverallData.filter(item => item.สาระ === 'รวม' && item.การสอบ === selectedExam);
-
             renderOverallChart(filtered, selectedYear, chartType);
         }
 
@@ -508,9 +964,8 @@
 
             if (myChart) myChart.destroy();
 
-            // การตั้งค่ากราฟตามประเภทที่เลือก
             switch (chartType) {
-                case 'type1': // แบบที่ 1: เปรียบเทียบ รร. กับ ปท. (ในปีที่เลือก)
+                case 'type1':
                     const dataYear1 = data.filter(item => item.ปี === selectedYear);
                     const subjects1 = [...new Set(dataYear1.map(item => item.วิชา))];
                     
@@ -531,13 +986,13 @@
                             {
                                 label: 'คะแนนเฉลี่ยระดับประเทศ',
                                 data: countryScores1,
-                                backgroundColor: '#E53935', // สีแดง
+                                backgroundColor: '#E53935',
                                 datalabels: { anchor: 'end', align: 'top' }
                             },
                             {
                                 label: 'คะแนนเฉลี่ยระดับโรงเรียน',
                                 data: schoolScores1,
-                                backgroundColor: '#FBC02D', // สีเหลือง
+                                backgroundColor: '#FBC02D',
                                 datalabels: { anchor: 'end', align: 'top' }
                             }
                         ]
@@ -545,11 +1000,10 @@
                     document.getElementById('chartTitle').innerHTML = titleSpan + `แผนภูมิที่ 1 เปรียบเทียบคะแนนเฉลี่ยระดับโรงเรียน กับระดับประเทศ ปีการศึกษา ${selectedYear}`;
                     break;
 
-                case 'type2': // แบบที่ 2: เปรียบเทียบย้อนหลัง 3 ปี (อิงปีที่เลือกเป็นปีล่าสุด)
+                case 'type2':
                     const targetYearNum = parseInt(selectedYear);
                     const years2 = [String(targetYearNum - 2), String(targetYearNum - 1), String(targetYearNum)];
                     
-                    // หาเฉพาะข้อมูลวิชาที่มีปรากฏในช่วง 3 ปีนี้
                     const dataYears2 = data.filter(item => years2.includes(item.ปี));
                     let subjects2 = [...new Set(dataYears2.map(item => item.วิชา))];
                     
@@ -557,7 +1011,7 @@
                         subjects2 = [...new Set(data.map(item => item.วิชา))];
                     }
 
-                    const colors = ['#4DD0E1', '#1565C0', '#E53935']; // สีฟ้า, น้ำเงิน, แดง (ตามภาพที่ 2)
+                    const colors = ['#4DD0E1', '#1565C0', '#E53935'];
 
                     chartData.labels = subjects2;
                     years2.forEach((year, index) => {
@@ -576,7 +1030,6 @@
                     break;
             }
 
-            // ตัวเลือกทั่วไปสำหรับกราฟแท่ง
             options = {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -598,7 +1051,7 @@
                     datalabels: {
                         color: 'black',
                         font: { weight: 'bold', family: 'Sarabun' },
-                        formatter: value => (value && value > 0) ? value : '' // ไม่แสดงค่าที่เป็น 0 หรือ null
+                        formatter: value => (value && value > 0) ? value : ''
                     }
                 },
                 scales: {
@@ -618,12 +1071,688 @@
                 }
             };
 
-            // สร้างกราฟ
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: chartData,
                 options: options
             });
+        }
+
+        // ==========================================
+        // 3. ฟังก์ชันสำหรับแถบวิเคราะห์คะแนน AI
+        // ==========================================
+
+        async function checkAiConfigStatus() {
+            try {
+                const res = await fetch(`${API_URL}?action=checkConfig`);
+                const data = await res.json();
+                if (data.status === 'success' && data.model) {
+                    document.getElementById('aiModelBadge').innerText = data.model;
+                }
+            } catch (e) {
+                console.log('checkConfigStatus:', e);
+            }
+        }
+
+        async function initAiSection() {
+            const exam = document.getElementById('aiExamSelect').value;
+            await loadAiExamData(exam);
+            populateAiSubjects();
+            handleAiSubjectChange();
+        }
+
+        async function loadAiExamData(exam) {
+            if (cachedExamData[exam] && cachedExamData[exam].length > 0) {
+                return;
+            }
+            try {
+                const res = await fetch(`${API_URL}?sheet=${exam}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    cachedExamData[exam] = json.data;
+                }
+            } catch (err) {
+                console.error('Error loading AI data for', exam, err);
+            }
+        }
+
+        async function handleAiExamChange() {
+            const exam = document.getElementById('aiExamSelect').value;
+            await loadAiExamData(exam);
+            populateAiSubjects();
+            handleAiSubjectChange();
+        }
+
+        function populateAiSubjects() {
+            const exam = document.getElementById('aiExamSelect').value;
+            const data = cachedExamData[exam] || [];
+            const subjects = [...new Set(data.map(d => d.วิชา))].sort();
+            const sel = document.getElementById('aiSubjectSelect');
+            sel.innerHTML = '';
+            subjects.forEach(sub => {
+                sel.innerHTML += `<option value="${sub}">${sub}</option>`;
+            });
+            if (subjects.length > 0) sel.selectedIndex = 0;
+        }
+
+        function handleAiSubjectChange() {
+            const exam = document.getElementById('aiExamSelect').value;
+            const data = cachedExamData[exam] || [];
+            const sub = document.getElementById('aiSubjectSelect').value;
+
+            // อัปเดตสาระ
+            const strandSel = document.getElementById('aiStrandSelect');
+            const filteredStrands = [...new Set(data.filter(d => d.วิชา === sub).map(d => d.สาระ))].sort();
+            strandSel.innerHTML = '';
+            filteredStrands.forEach(st => {
+                if (st) strandSel.innerHTML += `<option value="${st}">${st}</option>`;
+            });
+            const totIdx = filteredStrands.findIndex(s => s === 'รวม');
+            if (totIdx !== -1) strandSel.value = 'รวม';
+            else if (filteredStrands.length > 0) strandSel.selectedIndex = 0;
+
+            // อัปเดตปี
+            const yearSel = document.getElementById('aiYearSelect');
+            const years = [...new Set(data.filter(d => d.วิชา === sub).map(d => d.ปี))].sort().reverse();
+            yearSel.innerHTML = `<option value="ทุกปี">ทุกปี (วิเคราะห์แนวโน้ม 5 ปี)</option>`;
+            years.forEach(yr => {
+                yearSel.innerHTML += `<option value="${yr}">ปีการศึกษา ${yr}</option>`;
+            });
+
+            updateAiFilteredSummary();
+        }
+
+        function updateAiFilteredSummary() {
+            const exam = document.getElementById('aiExamSelect').value;
+            const data = cachedExamData[exam] || [];
+            const sub = document.getElementById('aiSubjectSelect').value;
+            const strand = document.getElementById('aiStrandSelect').value;
+            const year = document.getElementById('aiYearSelect').value;
+
+            let filtered = data.filter(d => d.วิชา === sub && d.สาระ === strand);
+            if (year !== 'ทุกปี') {
+                filtered = filtered.filter(d => d.ปี === year);
+            }
+
+            // เรียงลำดับปีจากน้อยไปมาก
+            filtered.sort((a, b) => (parseInt(a.ปี) || 0) - (parseInt(b.ปี) || 0));
+            currentAiFilteredItems = filtered;
+
+            document.getElementById('aiDataCountBadge').innerText = `${filtered.length} รายการ`;
+
+            const box = document.getElementById('aiDataSummaryBox');
+            if (filtered.length === 0) {
+                box.innerHTML = '<span class="text-gray-400 italic">ไม่พบรายการคะแนนตามเงื่อนไขที่เลือก</span>';
+                return;
+            }
+
+            let summaryHtml = `<div class="space-y-1">`;
+            summaryHtml += `<div class="font-bold text-gray-800">[${exam}] วิชา: ${sub} | สาระ: ${strand} (${year})</div>`;
+            filtered.forEach(item => {
+                const sch = parseFloat(item.คะแนนเฉลี่ยระดับโรงเรียน) || 0;
+                const cty = parseFloat(item.คะแนนเฉลี่ยระดับประเทศ) || 0;
+                const diff = (sch - cty).toFixed(2);
+                const isHigher = sch >= cty;
+                const badgeColor = isHigher ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100';
+                const sign = isHigher ? '+' : '';
+
+                summaryHtml += `
+                    <div class="flex items-center justify-between text-xs py-1 border-b border-gray-100">
+                        <span>• ปี ${item.ปี}: รร. <strong>${sch.toFixed(2)}%</strong> vs ปท. <strong>${cty.toFixed(2)}%</strong></span>
+                        <span class="px-2 py-0.5 rounded font-bold ${badgeColor}">ผลต่าง: ${sign}${diff}%</span>
+                    </div>
+                `;
+            });
+            summaryHtml += `</div>`;
+            box.innerHTML = summaryHtml;
+        }
+
+        function focusCustomPrompt() {
+            const input = document.getElementById('aiCustomPromptInput');
+            input.focus();
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // เรียกประมวลผล Preset AI
+        async function triggerAiPreset(type) {
+            const exam = document.getElementById('aiExamSelect').value;
+            const sub = document.getElementById('aiSubjectSelect').value;
+            const strand = document.getElementById('aiStrandSelect').value;
+            const year = document.getElementById('aiYearSelect').value;
+            const customInput = document.getElementById('aiCustomPromptInput').value.trim();
+
+            if (!sub) {
+                alert('กรุณาเลือกวิชาที่ต้องการวิเคราะห์');
+                return;
+            }
+
+            let topic = '';
+            switch (type) {
+                case 'misconception':
+                    topic = 'วิเคราะห์จุดอ่อนและข้อเข้าใจคลาดเคลื่อน (Misconceptions) ที่ทำให้คะแนนต่ำกว่าเกณฑ์ระดับประเทศ';
+                    break;
+                case 'teaching':
+                    topic = 'แนะแนวทางการจัดการเรียนรู้เชิงรุก (Active Learning), การปรับแผนการสอน และการเลือกใช้สื่อ/เกม/เทคโนโลยีที่เหมาะสม';
+                    break;
+                case 'plc':
+                    topic = 'ร่างประเด็นการจัดทำชุมชนแห่งการเรียนรู้ทางวิชาชีพ (PLC) และกรอบวิจัยในชั้นเรียนเพื่อแก้ปัญหาร่วมกัน';
+                    break;
+                case 'sar':
+                    topic = 'สรุปข้อมูลสารสนเทศสำหรับผู้บริหาร เพื่อจัดสรรงบประมาณ และจัดทำรายงานประเมินตนเอง (SAR) ตามมาตรฐาน SDG4';
+                    break;
+                case 'transition':
+                    topic = 'แนวทางการส่งต่อนักเรียนระหว่างช่วงชั้น (การเชื่อมโยงทักษะจาก RT ป.1 ➔ NT ป.3 ➔ O-NET ป.6)';
+                    break;
+                case 'custom':
+                default:
+                    topic = customInput || 'วิเคราะห์แนวโน้มคะแนนเฉลี่ยระดับโรงเรียนเทียบระดับประเทศและข้อเสนอแนะเชิงพัฒนา';
+                    break;
+            }
+
+            currentAiTopic = topic;
+            await executeAiRequest(exam, year, sub, strand, topic, customInput);
+        }
+
+        async function executeAiRequest(exam, year, sub, strand, topic, customPrompt) {
+            const btn = document.getElementById('aiSubmitBtn');
+            const btnText = document.getElementById('aiBtnText');
+            const spinner = document.getElementById('aiBtnSpinner');
+            const resultCard = document.getElementById('aiResultCard');
+            const resultContent = document.getElementById('aiResultContent');
+            const resultTitle = document.getElementById('aiResultTitle');
+            const resultMeta = document.getElementById('aiResultMeta');
+            const sheetBadge = document.getElementById('sheetSaveStatusBadge');
+            const chatSection = document.getElementById('aiChatSection');
+
+            btn.disabled = true;
+            btnText.innerText = 'AI กำลังประมวลผล...';
+            spinner.classList.remove('hidden');
+
+            resultCard.classList.remove('hidden');
+            resultTitle.innerText = topic;
+            resultMeta.innerText = `การสอบ: ${exam} | วิชา: ${sub} | สาระ: ${strand} | ปี: ${year}`;
+            resultContent.innerHTML = `
+                <div class="flex items-center justify-center py-10 space-x-3 text-gray-500">
+                    <div class="loader w-6 h-6 border-2 border-school-red border-t-transparent"></div>
+                    <span class="animate-pulse">OpenTyphoon AI กำลังวิเคราะห์ข้อมูลคะแนนและจัดทำข้อเสนอแนะ...</span>
+                </div>
+            `;
+            sheetBadge.classList.add('hidden');
+
+            try {
+                const payload = {
+                    action: 'analyzeScore',
+                    exam: exam,
+                    year: year,
+                    subject: sub,
+                    strand: strand,
+                    promptTopic: topic,
+                    customPrompt: customPrompt,
+                    dataSummary: currentAiFilteredItems,
+                    chatHistory: [] // เริ่มต้นหัวข้อใหม่
+                };
+
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    lastAiAnalysisText = data.result;
+                    // Render Markdown
+                    if (typeof marked !== 'undefined') {
+                        resultContent.innerHTML = marked.parse(data.result);
+                    } else {
+                        resultContent.innerText = data.result;
+                    }
+
+                    if (data.savedToSheet) {
+                        sheetBadge.classList.remove('hidden');
+                    }
+
+                    // เริ่มต้นเปิดช่อง Chat
+                    chatSection.classList.remove('hidden');
+                    chatConversationHistory = [
+                        { role: 'user', content: `[โจทย์]: ${topic} \n${customPrompt}` },
+                        { role: 'assistant', content: data.result }
+                    ];
+                    renderChatMessages();
+
+                    // เลื่อนลงไปดูผลลัพธ์
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                } else {
+                    resultContent.innerHTML = `
+                        <div class="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+                            <strong>เกิดข้อผิดพลาด:</strong> ${data.message || 'ไม่สามารถติดต่อ AI ได้'}
+                            <div class="mt-2 text-xs text-gray-600">หากยังไม่ได้ตั้งค่า API Key กรุณาไปที่แท็บ <button onclick="switchTab('ADMIN')" class="text-school-red underline font-bold">Admin</button> เพื่อกรอก OpenTyphoon API Key</div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('Error during AI analysis:', err);
+                resultContent.innerHTML = `
+                    <div class="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+                        <strong>เกิดข้อผิดพลาดในการเชื่อมต่อ:</strong> ${err.message || err.toString()}
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = 'ประมวลผล AI';
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function copyAiResult() {
+            if (!lastAiAnalysisText) return;
+            navigator.clipboard.writeText(lastAiAnalysisText).then(() => {
+                const btnText = document.getElementById('copyBtnText');
+                const orig = btnText.innerText;
+                btnText.innerText = 'คัดลอกเรียบร้อยแล้ว!';
+                setTimeout(() => { btnText.innerText = orig; }, 2000);
+            }).catch(err => {
+                alert('ไม่สามารถคัดลอกได้: ' + err);
+            });
+        }
+
+        // ==========================================
+        // 4. Follow-up Chat (สนทนาต่อยอดกับ AI)
+        // ==========================================
+
+        function renderChatMessages() {
+            const container = document.getElementById('chatMessagesContainer');
+            container.innerHTML = '';
+
+            // แสดงเฉพาะข้อความหลังจากผลวิเคราะห์แรก เพื่อไม่ให้รก
+            const messagesToShow = chatConversationHistory.slice(2);
+            if (messagesToShow.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-xs text-gray-400">ยังไม่มีข้อความถาม-ตอบเพิ่มเติม พิมพ์คำถามหรือคลิกข้อความแนะนำด้านบนเพื่อเริ่มถาม</div>';
+                return;
+            }
+
+            messagesToShow.forEach(msg => {
+                const isUser = msg.role === 'user';
+                const bubble = document.createElement('div');
+                bubble.className = `flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`;
+                
+                const inner = document.createElement('div');
+                inner.className = `max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                    isUser 
+                        ? 'bg-school-red text-white rounded-br-none' 
+                        : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none markdown-body'
+                }`;
+
+                if (isUser) {
+                    inner.innerText = msg.content;
+                } else {
+                    inner.innerHTML = typeof marked !== 'undefined' ? marked.parse(msg.content) : msg.content;
+                }
+
+                bubble.appendChild(inner);
+                container.appendChild(bubble);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendQuickChat(text) {
+            document.getElementById('chatInput').value = text;
+            sendChat();
+        }
+
+        async function sendChat() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const sendBtn = document.getElementById('chatSendBtn');
+            const spinner = document.getElementById('chatSpinner');
+
+            // เพิ่มข้อความผู้ใช้ลง History
+            chatConversationHistory.push({ role: 'user', content: message });
+            renderChatMessages();
+            input.value = '';
+
+            sendBtn.disabled = true;
+            spinner.classList.remove('hidden');
+
+            const exam = document.getElementById('aiExamSelect').value;
+            const sub = document.getElementById('aiSubjectSelect').value;
+            const strand = document.getElementById('aiStrandSelect').value;
+            const year = document.getElementById('aiYearSelect').value;
+
+            try {
+                const payload = {
+                    action: 'analyzeScore',
+                    exam: exam,
+                    year: year,
+                    subject: sub,
+                    strand: strand,
+                    promptTopic: currentAiTopic || 'ถาม-ตอบเพิ่มเติม',
+                    customPrompt: message,
+                    dataSummary: currentAiFilteredItems,
+                    chatHistory: chatConversationHistory.slice(-6) // ส่งประวัติย้อนหลังสั้นๆ
+                };
+
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.status === 'success') {
+                    chatConversationHistory.push({ role: 'assistant', content: data.result });
+                    renderChatMessages();
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + data.message);
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการส่งคำถาม: ' + err.toString());
+            } finally {
+                sendBtn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function clearChatHistory() {
+            if (confirm('ต้องการล้างประวัติการสนทนาเพิ่มเติมหรือไม่?')) {
+                chatConversationHistory = chatConversationHistory.slice(0, 2);
+                renderChatMessages();
+            }
+        }
+
+        // ==========================================
+        // 5. ฟังก์ชันสำหรับแถบ Admin
+        // ==========================================
+
+        function checkAdminSession() {
+            const loginCard = document.getElementById('adminLoginCard');
+            const dashboard = document.getElementById('adminDashboard');
+
+            if (adminAuthToken === 'adwmk') {
+                loginCard.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                loadAdminConfig();
+            } else {
+                loginCard.classList.remove('hidden');
+                dashboard.classList.add('hidden');
+            }
+        }
+
+        async function handleAdminLogin() {
+            const pwdInput = document.getElementById('adminPasswordInput');
+            const pwd = pwdInput.value.trim();
+            const errDiv = document.getElementById('adminLoginError');
+            const btn = document.getElementById('adminLoginBtn');
+            const spinner = document.getElementById('adminLoginSpinner');
+            const btnText = document.getElementById('adminLoginBtnText');
+
+            errDiv.classList.add('hidden');
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.innerText = 'กำลังตรวจสอบ...';
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'adminLogin', password: pwd })
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    adminAuthToken = pwd;
+                    sessionStorage.setItem('wmk_admin_auth', pwd);
+                    pwdInput.value = '';
+                    checkAdminSession();
+                } else {
+                    errDiv.classList.remove('hidden');
+                    errDiv.innerText = data.message || 'รหัสผ่านไม่ถูกต้อง';
+                }
+            } catch (err) {
+                // หาก Apps Script ยังไม่ได้อัปเดตโค้ดใหม่ ให้ตรวจสอบกับรหัสคงที่ 'adwmk' เบื้องต้น
+                if (pwd === 'adwmk') {
+                    adminAuthToken = pwd;
+                    sessionStorage.setItem('wmk_admin_auth', pwd);
+                    pwdInput.value = '';
+                    checkAdminSession();
+                } else {
+                    errDiv.classList.remove('hidden');
+                    errDiv.innerText = 'รหัสผ่านไม่ถูกต้อง';
+                }
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.innerText = 'เข้าสู่ระบบ';
+            }
+        }
+
+        function handleAdminLogout() {
+            adminAuthToken = '';
+            sessionStorage.removeItem('wmk_admin_auth');
+            checkAdminSession();
+        }
+
+        function toggleApiKeyVisibility() {
+            const input = document.getElementById('typhoonApiKeyInput');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        async function loadAdminConfig() {
+            const keyStatus = document.getElementById('currentKeyStatus');
+            keyStatus.innerText = 'กำลังโหลดข้อมูลการตั้งค่า...';
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'adminLogin', password: adminAuthToken })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    if (data.rawApiKey) {
+                        document.getElementById('typhoonApiKeyInput').value = data.rawApiKey;
+                        keyStatus.innerHTML = `สถานะ: <span class="text-emerald-600 font-bold">บันทึกแล้ว (${data.apiKeyMasked})</span>`;
+                    } else {
+                        keyStatus.innerHTML = `สถานะ: <span class="text-amber-600 font-bold">ยังไม่ได้ตั้งค่า API Key</span>`;
+                    }
+                    if (data.model) {
+                        const modelEl = document.getElementById('detectedModelText');
+                        if (modelEl) modelEl.innerHTML = `ตรวจพบและใช้งานโมเดลอัตโนมัติ: <strong class="text-school-red">${data.model}</strong>`;
+                        const badgeEl = document.getElementById('aiModelBadge');
+                        if (badgeEl) badgeEl.innerText = data.model;
+                    }
+                }
+            } catch (e) {
+                keyStatus.innerText = 'สถานะ: เชื่อมต่อชีทตั้งค่าพร้อมใช้งาน';
+            }
+        }
+
+        async function saveAdminConfig() {
+            const apiKey = document.getElementById('typhoonApiKeyInput').value.trim();
+            const btn = document.getElementById('saveConfigBtn');
+            const spinner = document.getElementById('saveConfigSpinner');
+            const btnText = document.getElementById('saveConfigBtnText');
+            const alertBox = document.getElementById('adminActionAlert');
+
+            if (!apiKey) {
+                alert('กรุณากรอก OpenTyphoon API Key');
+                return;
+            }
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.innerText = 'กำลังตรวจจับโมเดลและบันทึก...';
+            alertBox.classList.add('hidden');
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'saveConfig',
+                        password: adminAuthToken,
+                        apiKey: apiKey
+                    })
+                });
+                const data = await res.json();
+
+                alertBox.classList.remove('hidden');
+                if (data.status === 'success') {
+                    alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200';
+                    alertBox.innerText = '✅ ' + data.message;
+                    if (data.model) {
+                        document.getElementById('aiModelBadge').innerText = data.model;
+                        const modelEl = document.getElementById('detectedModelText');
+                        if (modelEl) modelEl.innerHTML = `ตรวจพบและใช้งานโมเดลอัตโนมัติ: <strong class="text-school-red">${data.model}</strong>`;
+                    }
+                    loadAdminConfig();
+                } else {
+                    alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-red-100 text-red-800 border border-red-200';
+                    alertBox.innerText = '❌ เกิดข้อผิดพลาด: ' + data.message;
+                }
+            } catch (err) {
+                alertBox.classList.remove('hidden');
+                alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-red-100 text-red-800 border border-red-200';
+                alertBox.innerText = '❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.toString();
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.innerText = 'บันทึกการตั้งค่าลงชีท CONFIG';
+            }
+        }
+
+        async function testTyphoonConnection() {
+            const apiKey = document.getElementById('typhoonApiKeyInput').value.trim();
+            const btn = document.getElementById('testApiBtn');
+            const spinner = document.getElementById('testApiSpinner');
+            const btnText = document.getElementById('testApiBtnText');
+            const alertBox = document.getElementById('adminActionAlert');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.innerText = 'กำลังทดสอบเชื่อมต่อ...';
+            alertBox.classList.add('hidden');
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'testTyphoon',
+                        password: adminAuthToken,
+                        apiKey: apiKey
+                    })
+                });
+                const data = await res.json();
+
+                alertBox.classList.remove('hidden');
+                if (data.status === 'success') {
+                    alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200';
+                    alertBox.innerHTML = `✅ <strong>${data.message}</strong> (โมเดล: <span class="text-school-red font-mono">${data.model || ''}</span>)<br><span class="text-gray-600 mt-1 block">ข้อความตอบกลับ: "${data.reply}"</span>`;
+                    if (data.model) {
+                        const modelEl = document.getElementById('detectedModelText');
+                        if (modelEl) modelEl.innerHTML = `ตรวจพบและใช้งานโมเดลอัตโนมัติ: <strong class="text-school-red">${data.model}</strong>`;
+                        document.getElementById('aiModelBadge').innerText = data.model;
+                    }
+                } else {
+                    alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-red-100 text-red-800 border border-red-200';
+                    alertBox.innerText = '❌ ' + (data.message || 'ทดสอบเชื่อมต่อล้มเหลว');
+                }
+            } catch (err) {
+                alertBox.classList.remove('hidden');
+                alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-red-100 text-red-800 border border-red-200';
+                alertBox.innerText = '❌ เชื่อมต่อล้มเหลว: ' + err.toString();
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.innerText = 'ทดสอบการเชื่อมต่อ API';
+            }
+        }
+
+        async function initSystemSheets() {
+            const btn = document.getElementById('initSheetsBtn');
+            const spinner = document.getElementById('initSheetsSpinner');
+            const btnText = document.getElementById('initSheetsBtnText');
+            const alertBox = document.getElementById('initSheetsAlert');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.innerText = 'กำลังตรวจสอบชีท...';
+            alertBox.classList.add('hidden');
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'initSheets',
+                        password: adminAuthToken
+                    })
+                });
+                const data = await res.json();
+
+                alertBox.classList.remove('hidden');
+                if (data.status === 'success') {
+                    alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200';
+                    alertBox.innerText = '✅ ' + data.message;
+                } else {
+                    alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-red-100 text-red-800 border border-red-200';
+                    alertBox.innerText = '❌ เกิดข้อผิดพลาด: ' + data.message;
+                }
+            } catch (err) {
+                alertBox.classList.remove('hidden');
+                alertBox.className = 'p-3 rounded-lg text-xs font-semibold bg-red-100 text-red-800 border border-red-200';
+                alertBox.innerText = '❌ เกิดข้อผิดพลาด: ' + err.toString();
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.innerText = 'ตรวจสอบ / สร้างชีท CONFIG และ AI_LOGS';
+            }
+        }
+
+        async function loadAdminLogs() {
+            const tbody = document.getElementById('adminLogsTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500 animate-pulse">กำลังโหลดประวัติ...</td></tr>';
+
+            try {
+                const res = await fetch(`${API_URL}?action=getLogs&password=${encodeURIComponent(adminAuthToken)}&limit=20`);
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    const logs = data.logs || [];
+                    if (logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">ยังไม่มีบันทึกประวัติการวิเคราะห์ในชีท AI_LOGS</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = '';
+                    logs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-gray-50';
+                        const summaryText = log['สรุปคะแนน'] || '';
+                        const aiShort = (log['ผลการประมวลผล AI'] || '').substring(0, 75) + '...';
+
+                        tr.innerHTML = `
+                            <td class="p-2.5 whitespace-nowrap font-mono text-gray-500">${log['วัน-เวลา'] || '-'}</td>
+                            <td class="p-2.5 font-bold text-school-red">${log['การสอบ'] || '-'}</td>
+                            <td class="p-2.5">${log['ปีการศึกษา'] || '-'}</td>
+                            <td class="p-2.5">${log['วิชา'] || '-'} / <span class="text-gray-500">${log['สาระ'] || '-'}</span></td>
+                            <td class="p-2.5 font-medium text-gray-800">${log['หัวข้อการวิเคราะห์'] || '-'}</td>
+                            <td class="p-2.5 text-gray-600 max-w-xs truncate" title="${(log['ผลการประมวลผล AI'] || '').replace(/"/g, '&quot;')}">${aiShort}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">${data.message || 'โหลดประวัติไม่สำเร็จ'}</td></tr>`;
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">เกิดข้อผิดพลาดในการโหลดประวัติ: ${err.toString()}</td></tr>`;
+            }
         }
     </script>
 </body>
