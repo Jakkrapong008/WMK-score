@@ -379,7 +379,12 @@
                         <h3 id="aiResultTitle" class="text-lg font-bold text-gray-800 mt-2">ผลการวิเคราะห์</h3>
                         <p id="aiResultMeta" class="text-xs text-gray-500 mt-0.5"></p>
                     </div>
-                    <div class="flex items-center space-x-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="continueAiAnalysis()" id="continueAiBtn" class="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-1.5 rounded-lg font-bold transition flex items-center shadow-sm">
+                            <span id="continueAiIcon" class="mr-1.5">✍️</span>
+                            <span id="continueAiText">ให้ AI เขียนต่อ / ขยายความ</span>
+                            <div id="continueAiSpinner" class="loader w-3.5 h-3.5 border-2 border-white border-t-transparent ml-1.5 hidden"></div>
+                        </button>
                         <button onclick="copyAiResult()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition flex items-center">
                             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             <span id="copyBtnText">คัดลอกข้อความ</span>
@@ -393,6 +398,12 @@
 
                 <!-- เนื้อหา Markdown ที่ได้จาก AI -->
                 <div id="aiResultContent" class="markdown-body bg-white p-4 rounded-xl border border-gray-100 min-h-[150px]">
+                </div>
+
+                <!-- การแจ้งเตือนกรณีข้อความแตะขีดจำกัด -->
+                <div id="aiTruncationNotice" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <span>💡 <strong>คำแนะนำ:</strong> เนื้อหานี้มีความละเอียดสูงมาก หากต้องการให้ AI เขียนต่อในหัวข้อที่ค้างอยู่ สามารถกดปุ่ม <strong>"ให้ AI เขียนต่อ / ขยายความ"</strong> ด้านบนได้ทันที</span>
+                    <button onclick="continueAiAnalysis()" class="underline font-bold text-school-red whitespace-nowrap">คลิกเขียนต่อ ➔</button>
                 </div>
             </div>
 
@@ -1372,6 +1383,7 @@
                 });
 
                 const data = await res.json();
+                const truncationNotice = document.getElementById('aiTruncationNotice');
 
                 if (data.status === 'success') {
                     lastAiAnalysisText = data.result;
@@ -1384,6 +1396,12 @@
 
                     if (data.savedToSheet) {
                         sheetBadge.classList.remove('hidden');
+                    }
+
+                    if (data.isTruncated) {
+                        truncationNotice.classList.remove('hidden');
+                    } else {
+                        truncationNotice.classList.add('hidden');
                     }
 
                     // เริ่มต้นเปิดช่อง Chat
@@ -1416,6 +1434,89 @@
                 btn.disabled = false;
                 btnText.innerText = 'ประมวลผล AI';
                 spinner.classList.add('hidden');
+            }
+        }
+
+        async function continueAiAnalysis() {
+            if (!lastAiAnalysisText) {
+                alert('ยังไม่มีบทวิเคราะห์ให้เขียนต่อ กรุณากดประมวลผล AI ก่อน');
+                return;
+            }
+
+            const btn = document.getElementById('continueAiBtn');
+            const icon = document.getElementById('continueAiIcon');
+            const text = document.getElementById('continueAiText');
+            const spinner = document.getElementById('continueAiSpinner');
+            const resultContent = document.getElementById('aiResultContent');
+            const truncationNotice = document.getElementById('aiTruncationNotice');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            icon.classList.add('hidden');
+            text.innerText = 'AI กำลังเขียนต่อ...';
+
+            const exam = document.getElementById('aiExamSelect').value;
+            const sub = document.getElementById('aiSubjectSelect').value;
+            const strand = document.getElementById('aiStrandSelect').value;
+            const year = document.getElementById('aiYearSelect').value;
+
+            try {
+                const payload = {
+                    action: 'continueScore',
+                    exam: exam,
+                    year: year,
+                    subject: sub,
+                    strand: strand,
+                    promptTopic: currentAiTopic || 'วิเคราะห์คะแนน',
+                    previousContent: lastAiAnalysisText,
+                    dataSummary: currentAiFilteredItems
+                };
+
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    // นำข้อความใหม่มาต่อท้ายบทวิเคราะห์เดิม
+                    const addition = `\n\n---\n\n### ✍️ ส่วนที่เขียนต่อ / ขยายความเพิ่มเติม\n\n${data.result}`;
+                    lastAiAnalysisText += addition;
+
+                    if (typeof marked !== 'undefined') {
+                        resultContent.innerHTML = marked.parse(lastAiAnalysisText);
+                    } else {
+                        resultContent.innerText = lastAiAnalysisText;
+                    }
+
+                    if (data.isTruncated) {
+                        truncationNotice.classList.remove('hidden');
+                    } else {
+                        truncationNotice.classList.add('hidden');
+                    }
+
+                    // อัปเดตบริบทใน Chat History
+                    chatConversationHistory.push({ role: 'assistant', content: data.result });
+                    renderChatMessages();
+
+                    text.innerText = 'เขียนต่อสำเร็จ! (บันทึกลงชีทแล้ว)';
+                    setTimeout(() => {
+                        text.innerText = 'ให้ AI เขียนต่อ / ขยายความ';
+                    }, 3500);
+
+                } else {
+                    alert('เกิดข้อผิดพลาดในการเขียนต่อ: ' + (data.message || ''));
+                    text.innerText = 'ให้ AI เขียนต่อ / ขยายความ';
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.toString());
+                text.innerText = 'ให้ AI เขียนต่อ / ขยายความ';
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                icon.classList.remove('hidden');
             }
         }
 
